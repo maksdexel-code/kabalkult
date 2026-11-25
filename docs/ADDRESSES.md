@@ -45,6 +45,13 @@ Do **not** confuse with the bonding-curve Portal `0x5bEacaF7ABCbB3aB280e80D007FD
 | Real NVIDIA bStock on CMC | NVDAB, CMC id 40215 | [CMC tokenized stocks](https://coinmarketcap.com/view/tokenized-stock/) |
 | Atlas feeds | **Unknown** — Chainlink-compatible `latestRoundData()`; no public BSC/testnet addresses | [Atlas docs](https://docs.atlasoracle.io/developers/api-reference/single-feed-contract) — ask Atlas booth |
 
+## Token metadata (IPFS, uploaded through Flap's upload route)
+
+| Item | CID |
+|---|---|
+| Metadata JSON (`meta` at launch) | `bafkreig3ywcd6pccsoae3gqsxrncx3sqh74klsjxqb6wyqn7b7bauctodm` |
+| Logo | `bafkreianrrn7l4jsz2pslmk3sqfeqrm5ld6v3iuwcorzvhmoc3voztvlie` |
+
 ## Our contracts
 
 _None deployed yet (P1)._
