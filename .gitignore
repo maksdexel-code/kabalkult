@@ -1,0 +1,16 @@
+# secrets
+.env
+.env.*
+!.env.example
+# third-party clones (read-only reference)
+vendor/
+# build output
+node_modules/
+out/
+cache/
+broadcast/*/31337/
+logs/*.local.*
+.DS_Store
+.claude/settings.local.json
+# clean public export (its own git repo)
+public-repo/
