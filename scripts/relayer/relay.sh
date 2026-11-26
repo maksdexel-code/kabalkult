@@ -104,11 +104,26 @@ vaults() {
 # With fresh prices on chain, pay any reached milestone in every deal (a dry call first, so nothing is spent when
 # there is none). Deals = factory events + KK_VAULTS (comma-separated known vaults, a fallback for when the event
 # search is refused, e.g. publicnode blocks some cloud IPs).
+# Move waiting tax from the token's tax processor (Flap) into the vault, so a reached milestone has BNB to pay.
+# Only when the processor holds BNB or tax tokens, and only if a dry call passes (no gas wasted otherwise).
+dispatch() {
+  local rpc=${RPC:-$BSC_TESTNET_RPC_URL} t p tx
+  t=$(cast call "$1" "token()(address)" --rpc-url "$rpc") || return 0
+  p=$(cast call "$t" "taxProcessor()(address)" --rpc-url "$rpc") || return 0
+  [ "$(cast balance "$p" --rpc-url "$rpc")" != 0 ] || [ "$(cast call "$t" "balanceOf(address)(uint256)" "$p" --rpc-url "$rpc" | cut -d' ' -f1)" != 0 ] || return 0
+  cast call "$p" "dispatch()" --from "$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")" --rpc-url "$rpc" >/dev/null 2>&1 || return 0
+  tx=$(cast send "$p" "dispatch()" --private-key "$DEPLOYER_PRIVATE_KEY" --gas-price 0.1gwei --priority-gas-price 0.1gwei \
+    --rpc-url "$rpc" --json | jq -r .transactionHash) || return 0
+  log --arg vault "$1" --arg action dispatch --arg tx "$tx"
+  echo "tax dispatched ($1): $tx"
+}
+
 autopay() {
   local v list found
   found=$(vaults) || { found=""; log --arg error "event search failed, using KK_VAULTS only"; }
   list=$(printf '%s\n' ${KK_VAULTS//,/ } $found | tr 'A-F' 'a-f' | sort -u)
   for v in $list; do
+    dispatch "$v"
     cast call "$v" "checkMilestone()" --from "$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")" \
       --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" >/dev/null 2>&1 || continue
     TX=$(cast send "$v" "checkMilestone()" --private-key "$DEPLOYER_PRIVATE_KEY" --gas-price 0.1gwei --priority-gas-price 0.1gwei \

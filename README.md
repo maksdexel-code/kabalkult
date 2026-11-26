@@ -37,7 +37,7 @@ One-page write-up (problem, data sources, contracts, next steps): [`docs/WRITEUP
    share for every KOL listed at that moment. KOLs `claim` whenever they want (pull payments: a payout costs the
    same gas for 1 or 99,999 KOLs). A pump past several milestones pays them in one go; after the last milestone,
    new tax keeps paying KOLs while the market cap stays above it. If the token cannot be bought, that payout is in
-   BNB instead, so the vault can never get stuck. Our relayer calls `checkMilestone()` after each price update, for every deal launched through our factory
+   BNB instead, so the vault can never get stuck. Our relayer moves waiting tax into the vault (`dispatch()`) and calls `checkMilestone()` after each price update, for every deal launched through our factory
    (found from the factory's `KabalKultLauncherCreated` events, plus a known-vault list as a fallback).
 
 ## Price data: CoinMarketCap + Atlas
