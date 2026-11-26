@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PATH="$HOME/.foundry/bin:$PATH"
-set -a; . ./.env; set +a
+[ -f .env ] && { set -a; . ./.env; set +a; }   # in the cloud, settings come from env vars + Secret Manager
 DEPLOYER_PRIVATE_KEY="0x${DEPLOYER_PRIVATE_KEY#0x}"  # MetaMask exports keys without 0x
 : "${CMC_API_KEY:?CMC_API_KEY is empty in .env}"
 ONCE=0; DRY=0; for a in "$@"; do [ "$a" = --once ] && ONCE=1; [ "$a" = --dry-run ] && DRY=1; done
@@ -15,7 +15,10 @@ LOG=logs/relayer.jsonl
 USD=scripts/relayer/usd.jq
 RELAY=${KK_RELAY:-$(jq -r '.transactions[] | select(.contractName=="PriceRelay") | .contractAddress' contracts/broadcast/Deploy.s.sol/97/run-latest.json)}
 
-log() { jq -nc --arg t "$(date -u +%FT%TZ)" "$@" '$ARGS.named + {time: $t}' >> "$LOG"; }
+log() {  # one JSON line per event; RELAY_LOG_STDOUT=1 also prints it (Cloud Logging picks it up in the cloud)
+  local line; line=$(jq -nc --arg t "$(date -u +%FT%TZ)" "$@" '$ARGS.named + {time: $t}')
+  echo "$line" >> "$LOG"; [ "${RELAY_LOG_STDOUT:-0}" = 1 ] && echo "$line"; return 0
+}
 
 TICKERS=(NVDA TSLA AAPL)   # the StockDesk's mock stocks
 

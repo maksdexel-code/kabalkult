@@ -41,9 +41,10 @@ One-page write-up (problem, data sources, contracts, next steps): [`docs/WRITEUP
 ## Price data: CoinMarketCap + Atlas
 
 Market cap, milestone checks and stock purchases all use prices our relayer (`scripts/relayer/relay.sh`) writes to
-`PriceRelay` every 5 minutes. Each round:
+`PriceRelay` every 5 minutes. It runs on Google Cloud (Cloud Run job + Cloud Scheduler, keys in Secret Manager;
+container in `scripts/relayer/Dockerfile`), so prices stay live without any laptop. Each round:
 
-1. **CoinMarketCap Pro API** (server side, key only in `.env`): BNB/USD from `GET /v3/cryptocurrency/quotes/latest?id=1839`,
+1. **CoinMarketCap Pro API** (server side, key only in Secret Manager / `.env`): BNB/USD from `GET /v3/cryptocurrency/quotes/latest?id=1839`,
    NVDA/TSLA/AAPL from `GET /v5/real-world-assets/quotes/latest?symbol=NVDA,TSLA,AAPL` (tokenized-stock prices, 1 credit).
 2. **Atlas on-chain feeds** on BSC Testnet, read with `latestRoundData()`: BNB/USD `0x3957d289ee9C38272377786787ea34F9dd29788D`
    and NVDAB/USD (the real NVIDIA bStock) `0x3ef39d6361efa1e8ca066751f438077da81082a6`.
@@ -58,6 +59,7 @@ or look at the `PricesUpdated` events (one every ~5 minutes). Every CMC request 
 Atlas reading is also logged by the relayer to [`logs/relayer.jsonl`](logs/relayer.jsonl) (no key in the log):
 one JSON line per CMC call (`endpoint`, `credits`, `price`), per Atlas cross-check (`atlasBnbUsd`, `atlasNvdabUsd`,
 `gapBnbPct`, `gapNvdaPct`) and per on-chain push (`tx` hash, which you can open on BscScan).
+Lines marked `"runner":"cloud"` come from the Google Cloud job (`tools/cloud-relayer.sh logs` exports them); earlier ones from the first local runs.
 
 ## Contracts (`contracts/src`)
 

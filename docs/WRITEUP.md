@@ -32,7 +32,7 @@ independent sources and refuse to act when they disagree.
 | Atlas oracle | BNB/USD feed `0x3957d289ee9C38272377786787ea34F9dd29788D` (`latestRoundData()`) | Cross-check of the CMC BNB price | An on-chain, independent source for the number every payout depends on |
 | Atlas oracle | NVDAB/USD feed `0x3ef39d6361efa1e8ca066751f438077da81082a6` | Cross-check of the CMC NVDA price; published on chain | NVDAB is the real NVIDIA bStock on BNB Chain: what mNVDAb stands in for on mainnet |
 
-**How they combine** (our relayer, every 5 minutes, CMC key kept server-side):
+**How they combine** (our relayer on Google Cloud Run, every 5 minutes, CMC key kept server-side in Secret Manager):
 1. Call both CMC endpoints (2 credits per round; every call is logged with its endpoint and credit count).
 2. Read both Atlas feeds on BSC Testnet; reject a feed older than 1 hour.
 3. CMC and Atlas must agree within **1% (BNB)** and **3% (NVDA vs NVDAB)**. If not, the round is skipped.
