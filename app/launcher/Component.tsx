@@ -158,8 +158,8 @@ const fromUnits = (value: string | null | undefined, decimals: number, digits = 
   const n = Number(BigInt(value)) / 10 ** decimals;
   return n.toLocaleString("en-US", { maximumFractionDigits: digits });
 };
-// Flap's Portal liquidity floor on BSC testnet, measured 25 Nov 2026 (~1.07 tBNB).
-// shortcut: fixed here because the create page gets no chain reads; the Portal stays the real check.
+// Flap's Portal liquidity floor on BSC testnet, measured 25 Nov 2026 (~1.07 tBNB). The create page gets no chain
+// reads, so below this is only a warning: the Portal is the real check and may change its floor.
 const MIN_RAISE_WEI = 1_070_000_000_000_000_000n;
 const wallets = (text: string) => text.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
 
@@ -188,31 +188,37 @@ const initialForm: Form = {
 /** Validates the draft; returns encoded-ready values or a list of message keys for what is wrong. */
 function review(form: Form) {
   const problems: string[] = [];
+  const warnings: string[] = [];
   const name = form.name.trim(), symbol = form.symbol.trim();
   if (!name || !symbol) problems.push("errToken");
   const poolQuote = units(form.pool, 18);
-  if (poolQuote === null || poolQuote < MIN_RAISE_WEI) problems.push("errPool");
+  if (poolQuote === null || poolQuote === 0n) problems.push("errPool");
+  else if (poolQuote < MIN_RAISE_WEI) warnings.push("warnPool");
   const buy = units(form.buyTax, 2), sell = units(form.sellTax, 2);
   if (buy === null || sell === null || buy > 1000n || sell > 1000n || (buy > sell ? buy : sell) < 100n) problems.push("errTax");
   const stock = STOCKS.find(s => s.key === form.payout);
   const payoutToken = form.payout === "bnb" ? zero : stock ? stock.address : form.customPayout.trim();
   if (!addressPattern.test(payoutToken)) problems.push("errPayout");
+  if (form.payout === "custom") warnings.push("warnCustomToken");
   const usd = form.milestones.map(x => units(x.usd, 18));
   const share = form.milestones.map(x => units(x.share, 2));
   const rising = usd.every((u, i) => u !== null && u > 0n && (i === 0 || (usd[i - 1] ?? 0n) < u));
   const total = share.reduce<bigint>((a, s) => a + (s ?? 0n), 0n);
+  warnings.push("warnFirstMilestone");
   if (form.milestones.length < 1 || form.milestones.length > 10 || !rising || share.some(s => s === null || s === 0n) || total !== 10_000n) {
     problems.push("errMilestones");
   }
   const kols = wallets(form.kols), invitees = wallets(form.invitees);
-  if (kols.some(a => !addressPattern.test(a)) || kols.length > 100) problems.push("errKols");
+  const lower = kols.map(a => a.toLowerCase());
+  const duplicate = lower.some((a, i) => lower.indexOf(a) !== i);
+  if (kols.some(a => !addressPattern.test(a) || a.toLowerCase() === zero) || duplicate || kols.length > 100) problems.push("errKols");
   if (invitees.some(a => !addressPattern.test(a)) || invitees.length > 1000) problems.push("errInvitees");
   const slots = /^\d{1,5}$/.test(form.slots.trim()) ? Number(form.slots.trim()) : -1;
   if (slots < 0) problems.push("errSlots");
   if (kols.length === 0 && (invitees.length === 0 || slots === 0)) problems.push("errNobody");
-  if (problems.length) return { problems, values: null };
+  if (problems.length) return { problems, warnings, values: null };
   return {
-    problems,
+    problems, warnings,
     values: {
       name, symbol, meta: form.meta.trim(), poolQuote: poolQuote as bigint, namedKols: kols, invitees,
       campaignSlots: slots, milestoneUsd: usd as bigint[], milestoneShareBps: share.map(s => Number(s)),
@@ -378,6 +384,12 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
             </div>
           )}
 
+          {checked && draft.warnings.length > 0 && (
+            <div role="note" style={{ border: rule, padding: 16, color: limeSoft }}>
+              {draft.warnings.map(k => <p key={k} style={{ margin: "2px 0" }}>{m[k]}</p>)}
+            </div>
+          )}
+
           {checked && draft.values && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", paddingLeft: 3, paddingTop: 3 }}>
               <Cell><span style={label}>{m.reviewToken}</span>{draft.values.name} ({draft.values.symbol})</Cell>
@@ -389,6 +401,7 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
             </div>
           )}
 
+          <p style={{ margin: 0, color: muted, fontSize: 14 }}>{m.createRules}</p>
           {error && <p role="alert" style={{ margin: 0, color: danger }}>{error}</p>}
 
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
@@ -486,11 +499,13 @@ export function Launcher({ context, messages: m, host }: DetailProps) {
           {kolNumber === 0 && s.invited && slotsLeft > 0 && <Button primary disabled={busy} onClick={() => act("joinCampaign")}>{m.joinButton}</Button>}
           {!account && <Button primary onClick={() => host?.wallet?.connect()}>{m.connect}</Button>}
           {s.launched && s.token && addressPattern.test(s.token) && (
-            <Button onClick={() => host?.redirect?.(`/bnb-testnet/${s.token}/taxinfo`)}>{m.openVault}</Button>
+            <Button onClick={() => host?.redirect?.(`/${context.identity.chainId === 56 ? "bnb" : "bnb-testnet"}/${s.token}/taxinfo`)}>{m.openVault}</Button>
           )}
         </div>
+        {kolNumber > 0 && !s.confirmed && <p style={{ margin: 0, color: muted, fontSize: 14 }}>{m.confirmHint}</p>}
         {kolNumber === 0 && s.invited && slotsLeft <= 0 && <p style={{ margin: 0, color: danger }}>{m.campaignFull}</p>}
         {note && <p role="status" style={{ margin: 0, color: muted }}>{note}</p>}
+        <p style={{ margin: 0, color: muted, fontSize: 14 }}>{m.dealRules}</p>
         <p style={{ margin: 0, color: muted, fontSize: 14 }}>{m.disclaimer}</p>
       </div>
     </section>
