@@ -87,6 +87,18 @@ v2 = v1 + on-chain campaign invites (no-argument `joinCampaign()`, works as a bu
 | Vault | [`0x06f8efB571951D0169e10cd626eB4c5Db9BB954a`](https://testnet.bscscan.com/address/0x06f8efB571951D0169e10cd626eB4c5Db9BB954a) |
 | Settings | 5%/5% tax · mNVDAb · milestones $731 / $853 / $975 / $1,097 paying 10/20/30/40% · 2 named KOLs · 2 invitees, 50 slots |
 
+### Launch v2 — trading run on testnet (Thu 26 Nov, 16:10–16:40)
+
+| Step | Result | Tx |
+|---|---|---|
+| Run 1: 18 random buys (0.03–0.06 tBNB) + 6 sells + tax dispatches | market cap $609 → $1,225 | log: `scripts/demo/spam.sh` |
+| Milestones 1 + 2 paid **in one payout** (catch-up: the pump passed both) | 30% of the vault → mNVDAb | [tx](https://testnet.bscscan.com/tx/0x4cd5517ce5dec04760283f73fcbc27958fc1a741a8c9ab95a002f64bbd2b2654) |
+| Milestone 3 paid | | [tx](https://testnet.bscscan.com/tx/0x434b5e900efeeac8be3609fd9e973b7bff18c3a289a91780f6bf28c90033d56a) |
+| Milestone 4 paid **automatically by the CMC relayer** right after a price push | vault spent | [tx](https://testnet.bscscan.com/tx/0x40e14ba24f83f2a5f503b337891ef9fb8f722582f8d9a7bf7005dd37d49150fb) |
+| Run 2 (after the last milestone): 20 more rounds of buys and sells | 5 more payouts of new tax to KOLs; one sell dipped market cap to $1,027 (below the last milestone), so that tax waited until it was back above | 8 payouts in total |
+| KOLs claim (anyone can trigger, funds go to the KOL) | each named KOL holds **0.2651 mNVDAb, earned $39.65** | [tx](https://testnet.bscscan.com/tx/0x76db6d373e46ebcdf0c994faa47f04a8fd099ebed7b0ac35615cc11214fbcdb6), [tx](https://testnet.bscscan.com/tx/0xf593393900fd6ddbe78227ad5f9d1a3304104d35f192a9b58073b7dfc03d651a) |
+| Vault totals | revenue 0.1433 tBNB, all of it paid out | |
+
 ## Our contracts — v1 (first launch; full flow proven, superseded by v2)
 
 ### v1 contracts
