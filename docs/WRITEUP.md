@@ -40,7 +40,7 @@ independent sources and refuse to act when they disagree.
    `CMC Pro API (BNB v3, stocks v5 RWA) + Atlas feeds (BNB/USD, NVDAB/USD) agree: BNB 0.02%, NVDA 0.03%`.
    The Atlas NVDAB price is stored on chain too (`stockUsd("NVDAB")`).
 5. The vault and stock desk only accept prices **less than 10 minutes old**. No fresh agreed price, no payout.
-6. If a milestone is reached, the relayer triggers the payout right away (anyone else can too).
+6. If a milestone is reached in any KabalKult deal, the relayer triggers the payout right away (anyone else can too).
 
 Every `Payout` event stores the price source string, so each payout shows which data it was made with.
 

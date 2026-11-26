@@ -84,16 +84,38 @@ tick() {
   autopay
 }
 
-# With fresh prices on chain, pay any reached milestone (a dry call first, so nothing is spent when there is none).
+# Every launched KabalKult deal: the factory's KabalKultLauncherCreated events, read from a node that allows
+# event searches (the default BSC node refuses them; publicnode allows 50,000 blocks per call).
+FACTORY=${KK_FACTORY:-0xb3E793C1111900F3d47EEe4D8c22c3C15cD0551F}
+FACTORY_BLOCK=${KK_FACTORY_BLOCK:-144947353}   # factory deploy block
+LOGS_RPC=${KK_LOGS_RPC:-https://bsc-testnet-rpc.publicnode.com}
+vaults() {
+  local rpc=${RPC:-$BSC_TESTNET_RPC_URL} n s l
+  n=$(cast block-number --rpc-url "$LOGS_RPC") || return 1
+  for ((s = FACTORY_BLOCK; s <= n; s += 50000)); do
+    cast logs --address "$FACTORY" "KabalKultLauncherCreated(address indexed,address indexed,bytes32)" \
+      --from-block $s --to-block $((s + 49999 > n ? n : s + 49999)) --rpc-url "$LOGS_RPC" --json | jq -r '.[].topics[1]' || return 1
+  done | while read -r l; do
+    l=0x${l: -40}
+    [ "$(cast call "$l" "launched()(bool)" --rpc-url "$rpc")" = true ] && cast call "$l" "vault()(address)" --rpc-url "$rpc"
+  done
+}
+
+# With fresh prices on chain, pay any reached milestone in every deal (a dry call first, so nothing is spent when
+# there is none). Deals = factory events + KK_VAULTS (comma-separated known vaults, a fallback for when the event
+# search is refused, e.g. publicnode blocks some cloud IPs).
 autopay() {
-  local v=${KK_VAULT:-$(awk '/Vault/{print $2; exit}' launch/launch.txt 2>/dev/null)}
-  [ -n "$v" ] || return 0
-  cast call "$v" "checkMilestone()" --from "$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")" \
-    --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" >/dev/null 2>&1 || return 0
-  TX=$(cast send "$v" "checkMilestone()" --private-key "$DEPLOYER_PRIVATE_KEY" --gas-price 0.1gwei --priority-gas-price 0.1gwei \
-    --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" --json | jq -r .transactionHash)
-  log --arg vault "$v" --arg action checkMilestone --arg tx "$TX"
-  echo "milestone paid: $TX"
+  local v list found
+  found=$(vaults) || { found=""; log --arg error "event search failed, using KK_VAULTS only"; }
+  list=$(printf '%s\n' ${KK_VAULTS//,/ } $found | tr 'A-F' 'a-f' | sort -u)
+  for v in $list; do
+    cast call "$v" "checkMilestone()" --from "$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")" \
+      --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" >/dev/null 2>&1 || continue
+    TX=$(cast send "$v" "checkMilestone()" --private-key "$DEPLOYER_PRIVATE_KEY" --gas-price 0.1gwei --priority-gas-price 0.1gwei \
+      --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" --json | jq -r .transactionHash) || continue
+    log --arg vault "$v" --arg action checkMilestone --arg tx "$TX"
+    echo "milestone paid ($v): $TX"
+  done
 }
 
 while true; do
