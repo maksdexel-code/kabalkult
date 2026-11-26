@@ -113,11 +113,10 @@ Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before a
   `0xDE3C…0d87` (the key the mainnet verifier trusts), but the testnet verifier `0x236C…9932` still trusts `0xE939…B9e5`,
   so `verify()` returns false for every fresh testnet proof. Tested with a real X post: the proof matches our
   `xPostText` and only the named KOL can use it; `confirmWithX` waits for Flap to update the testnet oracle key.
-- **Vault UI on flap.sh is one version behind this repo.** `app/vault` adds a public KOL roster (every KOL, their
-  confirm badge and proven X handle); the preview Flap published on 26 Nov predates it and shows only the connected
-  wallet's own status. The roster reads the KOL list from the deal's launcher, which Flap's current packaging rules
-  don't allow for a Vault UI (only the vault, token, factory or fixed declared contracts). Fix: a vault view that returns
-  the KOL list (needs a vault upgrade by the Flap Guardian), or a reviewed exception from Flap.
+- **No full public KOL roster yet.** The vault page has a "Check a wallet" box (KOL number, confirm badge, proven X
+  handle and USD earned for any wallet). A full list needs the KOL list from the deal's launcher, which Flap's Vault UI
+  rules don't allow reading (only the vault, token, factory or fixed declared contracts). Fix: a vault view that returns
+  the KOL list (vault upgrade by the Flap Guardian), or a reviewed exception from Flap.
 
 ## How this was built
 
