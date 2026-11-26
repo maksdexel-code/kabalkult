@@ -9,6 +9,8 @@ reached, the vault buys the creator's payout token (a tokenized stock — mock N
 with a BNB pool, or plain BNB) and splits it equally among the KOLs.
 The KOL never holds a meme bag to dump.
 
+One-page write-up (problem, data sources, contracts, next steps): [`docs/WRITEUP.md`](docs/WRITEUP.md).
+
 ## How it works
 
 1. **Create** — the creator calls Flap's `Portal.newLauncher(KabalKultLauncherFactory, config)`. The config holds
