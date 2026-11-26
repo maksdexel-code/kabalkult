@@ -1,7 +1,8 @@
 #!/bin/bash
 # Demo trades on the launched token with the BUYER wallet:
-#   scripts/demo/trade.sh status | buy <tBNB> | sell <percent of BUYER's tokens> | dispatch | check
-# dispatch = token's tax processor sends collected tax BNB to the vault; check = vault.checkMilestone().
+#   scripts/demo/trade.sh status | buy <tBNB> | sell <percent of BUYER's tokens> | dispatch | check | claim <kol>
+# dispatch = token's tax processor sends collected tax BNB to the vault; check = vault.checkMilestone();
+# claim = send a KOL what they earned (anyone can call, funds go to the KOL).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PATH="$HOME/.foundry/bin:$PATH"
@@ -21,8 +22,9 @@ sell) AMT=$(cast call $T "balanceOf(address)(uint256)" $ME --rpc-url $R | awk -v
        $AMT 0 "[$T,$WBNB]" $ME "$(deadline)" ;;
 dispatch) send "$(cast call $T "taxProcessor()(address)" --rpc-url $R)" "dispatch()" ;;
 check) send $V "checkMilestone()" ;;
+claim) send $V "claim(address)" "${2:?kol address}" ;;
 status) ;;
-*) echo "usage: scripts/demo/trade.sh status|buy <tBNB>|sell <percent>|dispatch|check"; exit 1 ;;
+*) echo "usage: scripts/demo/trade.sh status|buy <tBNB>|sell <percent>|dispatch|check|claim <kol>"; exit 1 ;;
 esac
-echo "BUYER $(cast balance $ME --ether --rpc-url $R) tBNB | vault $(cast balance $V --ether --rpc-url $R) tBNB | paid $(cast call $V 'milestonesPaid()(uint256)' --rpc-url $R)/2"
+echo "BUYER $(cast balance $ME --ether --rpc-url $R) tBNB | vault $(cast balance $V --ether --rpc-url $R) tBNB | milestones paid $(cast call $V 'milestonesPaid()(uint256)' --rpc-url $R)"
 echo "market cap \$$(cast call $V 'marketCapUsd()(uint256)' --rpc-url $R 2>/dev/null | awk '{printf "%.0f", $1/1e18}' || echo '? (price stale: run the relayer)')"

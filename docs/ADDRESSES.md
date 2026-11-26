@@ -26,6 +26,12 @@ Do **not** confuse with the bonding-curve Portal `0x5bEacaF7ABCbB3aB280e80D007FD
 | WBNB | `0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd` | [test/ForkAddresses.sol](https://github.com/flap-sh/FlapPoolLaunchVaultExample/blob/main/test/ForkAddresses.sol) |
 | V2 Router (buys/sells; vault buys non-stock payout tokens here) | `0xc9D63ddCB9549578057EAB6A83a543DdFEE2b8c3` | test/ForkAddresses.sol — ✅ swaps worked in our fork probe; ✅ `factory()` = `0x6725F303b657a9451d8BA641348b6761A6CC7a17`, the same V2 factory as PancakeSwap's testnet router `0xD99D1c33F9fC3444f8101754aBC46c52416550D1`, so it reaches PancakeSwap testnet pools |
 
+## Flap infrastructure (testnet)
+
+| Contract | Address | Source | On-chain check |
+|---|---|---|---|
+| X Verifier (XGeneralVerifier) | `0x236C4AF8e0674fB22a139DDE4C2A518CBA819932` | [Flap docs: X Verifier](https://docs.flap.sh/en/flap/v2/developers/flap-infrastructures/flap-x-verifier) | ✅ `oracleKey()` = `0xE93960A4a1233794cC00A4408e8664e4EdB0B9e5`; oracle `https://verifyx.taxed.fun/health` = 200 |
+
 ## Flap UI template reference deployment (for comparison only)
 
 | Contract | Address | Source |

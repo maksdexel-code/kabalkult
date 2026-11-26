@@ -5,6 +5,8 @@ import {Script, console2} from "forge-std/Script.sol";
 import {PriceRelay} from "src/PriceRelay.sol";
 import {StockDesk} from "src/StockDesk.sol";
 import {KabalKultLauncherFactory} from "src/KabalKultLauncherFactory.sol";
+import {KabalKultLauncher} from "src/KabalKultLauncher.sol";
+import {KabalKultVault} from "src/KabalKultVault.sol";
 
 /// @notice Deploys PriceRelay, StockDesk (+ mNVDAb, mTSLAb, mAAPLb) and the Launcher factory (+ its vault factory).
 ///         The deployer becomes the PriceRelay updater (our relayer).
@@ -18,7 +20,9 @@ contract Deploy is Script {
         vm.startBroadcast(pk);
         PriceRelay relay = new PriceRelay(vm.addr(pk));
         StockDesk desk = new StockDesk(relay);
-        KabalKultLauncherFactory lf = new KabalKultLauncherFactory(address(relay), address(desk), ROUTER);
+        KabalKultLauncherFactory lf = new KabalKultLauncherFactory(
+            address(relay), address(desk), ROUTER, address(new KabalKultLauncher()), address(new KabalKultVault())
+        );
         vm.stopBroadcast();
 
         console2.log("PriceRelay              ", address(relay));

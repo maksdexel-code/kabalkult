@@ -30,7 +30,7 @@ contract KabalKultVaultFactory is DirectLaunchVaultFactoryBase {
     event FlapVaultImplementationUpgraded(address implementation);
     event KabalKultVaultCreated(address indexed vault, address indexed token, address indexed launcher);
 
-    constructor(address launcherFactory_, address relay_, address desk_, address router_) {
+    constructor(address launcherFactory_, address relay_, address desk_, address router_, address vaultImpl) {
         if (launcherFactory_ == address(0) || relay_ == address(0) || desk_ == address(0) || router_ == address(0)) {
             revert ZeroAddress();
         }
@@ -38,7 +38,7 @@ contract KabalKultVaultFactory is DirectLaunchVaultFactoryBase {
         relay = relay_;
         desk = desk_;
         router = router_;
-        beacon = address(new UpgradeableBeacon(address(this), address(new KabalKultVault())));
+        beacon = address(new UpgradeableBeacon(address(this), vaultImpl));
     }
 
     /// @inheritdoc DirectLaunchVaultFactoryBase

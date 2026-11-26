@@ -14,9 +14,16 @@ import {StockDesk} from "./StockDesk.sol";
 interface IKabalKultLauncher {
     function pool() external view returns (address);
     function milestoneUsd(uint256 id) external view returns (uint256);
-    function kolList() external view returns (address[] memory);
+    function milestoneShareBps(uint256 id) external view returns (uint16);
+    function milestoneCount() external view returns (uint256);
+    function kolCount() external view returns (uint256);
+    function kolNumber(address kol) external view returns (uint256);
     function payoutToken() external view returns (address);
-    function milestone1ShareBps() external view returns (uint16);
+}
+
+interface IV2PairLike {
+    function token0() external view returns (address);
+    function getReserves() external view returns (uint112, uint112, uint32);
 }
 
 interface IV2RouterLike {
@@ -26,27 +33,23 @@ interface IV2RouterLike {
         payable;
 }
 
-interface IV2PairLike {
-    function token0() external view returns (address);
-    function getReserves() external view returns (uint112, uint112, uint32);
-}
-
 /// @title KabalKultVault
-/// @notice Receives 100% of the token's tax in BNB. When the market cap reaches the next USD milestone,
-///         anyone calls `checkMilestone()`: the vault buys the creator's payout token with its BNB (milestone 1:
-///         the creator-set share, milestone 2: the rest) and splits it equally among the KOLs listed on the
-///         Launcher at that moment. Payout token: a StockDesk mock stock (bought at the CMC price), any token
-///         with a BNB pool (bought on the DEX), or plain BNB. If the token cannot be bought or sent, that
-///         milestone pays in BNB instead, so the vault can never get stuck.
+/// @notice Receives 100% of the token's tax in BNB. When the market cap reaches the next USD milestone, anyone calls
+///         `checkMilestone()`: the vault spends that milestone's share of its BNB on the creator's payout token and
+///         books an equal share for every KOL on the Launcher's list at that moment. KOLs `claim` when they want.
 ///
-///         Market cap (USD) = pool BNB reserve / pool token reserve × total supply × BNB/USD (from PriceRelay).
+///         - Shares: milestone i pays share[i] / (shares not yet paid) of the BNB on hand, so with no new tax the
+///           payouts match the planned split exactly; tax arriving later flows to later milestones.
+///         - Catch-up: a pump past several milestones pays them all in one payout.
+///         - After the last milestone: new tax keeps paying KOLs, as long as the market cap stays above it.
+///         - Payout token: a StockDesk mock stock (CMC price), any token with a BNB pool (DEX), or BNB. If the token
+///           cannot be bought, that payout is in BNB instead, so the vault can never get stuck.
+///         - Market cap (USD) = pool BNB reserve / pool token reserve × total supply × BNB/USD (PriceRelay).
 /// @dev shortcut: spot pool price, so one big buy can trigger a milestone; a hold rule / TWAP is the upgrade.
-///      Native BNB only. Deployed per launch as a beacon proxy by `KabalKultVaultFactory`.
+///      Pull payments: a payout costs the same gas for 1 KOL or 99,999. Deployed per launch as a beacon proxy.
 contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard {
     using SafeTransferLib for address;
     using Strings for uint256;
-
-    uint256 public constant MILESTONES = 2;
 
     address public token;
     IKabalKultLauncher public launcher;
@@ -54,24 +57,35 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
     StockDesk public desk;
     IV2RouterLike public router;
 
+    /// @notice Milestones paid so far (all of them = the vault is in "after the last milestone" mode).
     uint256 public milestonesPaid;
-    /// @notice BNB spent on payouts so far.
+    /// @notice Sum of the shares (bps) of the milestones paid so far.
+    uint256 public paidShareBps;
+    /// @notice BNB allocated to payouts so far (spent on tokens, or booked as BNB for KOLs).
     uint256 public totalSpent;
-    /// @notice Amount of each token (address(0) = BNB) paid to each KOL so far.
-    mapping(address kol => mapping(address token => uint256)) public earned;
-    /// @notice USD value of everything paid to each KOL, at the BNB price of each payout.
-    mapping(address kol => uint256) public earnedUsd;
+    /// @notice BNB booked for KOLs and not claimed yet; not available for new payouts.
+    uint256 public bnbOwed;
 
-    event MilestonePaid(
-        uint256 indexed milestoneId,
+    /// @dev Per payout: KOL count at that moment, and running per-KOL totals (payout token, BNB, USD).
+    ///      KOL number k (1-based join order) shares payout i iff kolCountAt[i] >= k; counts never go down.
+    uint256[] public kolCountAt;
+    uint256[] internal cumToken;
+    uint256[] internal cumBnb;
+    uint256[] internal cumUsd;
+    mapping(address kol => uint256) public claimedToken;
+    mapping(address kol => uint256) public claimedBnb;
+
+    event Payout(
+        uint256 indexed payoutId,
+        uint256 milestonesPaid,
         uint256 kolCount,
         address paidToken,
         uint256 amount,
         uint256 usdValue,
         string priceSource
     );
+    event Claimed(address indexed kol, address paidToken, uint256 tokenAmount, uint256 bnbAmount);
 
-    error AllPaid();
     error NotReached(uint256 marketCapUsd, uint256 targetUsd);
     error NoKols();
     error NothingToPay();
@@ -96,12 +110,21 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
     receive() external payable {}
 
     function version() external pure returns (string memory) {
-        return "v1.1.0";
+        return "v2.0.0";
     }
 
-    /// @notice Every BNB the vault ever received. Payouts move BNB from balance to totalSpent, so never count twice.
+    /// @notice Every BNB the vault ever received (payouts and claims move BNB around, never count it twice).
     function totalRevenue() public view returns (uint256) {
-        return address(this).balance + totalSpent;
+        return address(this).balance + totalSpent - bnbOwed;
+    }
+
+    /// @notice BNB available for the next payout.
+    function available() public view returns (uint256) {
+        return address(this).balance - bnbOwed;
+    }
+
+    function payoutCount() external view returns (uint256) {
+        return kolCountAt.length;
     }
 
     /// @notice Live market cap in USD (18 decimals). Reverts if the price is stale.
@@ -116,43 +139,55 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
         return rBnb * IERC20(token).totalSupply() / rToken * bnbUsd / 1e18;
     }
 
-    /// @notice Pay the next milestone if the market cap has reached it. Anyone can call.
+    /// @notice Pay every milestone the market cap has reached (or, after the last one, the new tax). Anyone can call.
     function checkMilestone() external nonReentrant {
-        uint256 id = milestonesPaid;
-        if (id == MILESTONES) revert AllPaid();
         uint256 bnbUsd = relay.freshBnbUsd();
         uint256 mc = _marketCapUsd(bnbUsd);
-        uint256 target = launcher.milestoneUsd(id);
+        uint256 n = launcher.milestoneCount();
+        uint256 id = milestonesPaid;
+        uint256 target = launcher.milestoneUsd(id < n ? id : n - 1);
         if (mc < target) revert NotReached(mc, target);
-        address[] memory kols = launcher.kolList();
-        if (kols.length == 0) revert NoKols();
-        uint256 bnb =
-            id == 0 ? address(this).balance * launcher.milestone1ShareBps() / 10_000 : address(this).balance;
-        if (bnb == 0) revert NothingToPay();
 
-        milestonesPaid = id + 1;
+        uint256 bnb = available();
+        if (id < n) {
+            uint256 reached;
+            uint256 j = id;
+            while (j < n && mc >= launcher.milestoneUsd(j)) {
+                reached += launcher.milestoneShareBps(j);
+                ++j;
+            }
+            if (j < n) bnb = bnb * reached / (10_000 - paidShareBps); // the last milestone takes everything
+            milestonesPaid = j;
+            paidShareBps += reached;
+        }
+        uint256 kols = launcher.kolCount();
+        if (kols == 0) revert NoKols();
+        if (bnb == 0) revert NothingToPay();
         totalSpent += bnb;
+
         address paid = launcher.payoutToken();
-        uint256 amount;
+        uint256 amount = bnb;
         if (paid != address(0)) {
-            // A token that cannot be bought or sent must not lock the vault: pay this milestone in BNB instead.
-            try this.payInToken(paid, bnb, kols) returns (uint256 out) {
+            // A token that cannot be bought must not lock the vault: pay this one in BNB instead.
+            try this.buyPayoutToken(paid, bnb) returns (uint256 out) {
                 amount = out;
             } catch {
                 paid = address(0);
             }
         }
-        if (paid == address(0)) amount = _split(address(0), bnb, kols);
+        if (paid == address(0)) bnbOwed += bnb;
 
         uint256 usd = bnb * bnbUsd / 1e18;
-        for (uint256 i; i < kols.length; ++i) {
-            earnedUsd[kols[i]] += usd / kols.length;
-        }
-        emit MilestonePaid(id, kols.length, paid, amount, usd, relay.source());
+        uint256 k = kolCountAt.length;
+        kolCountAt.push(kols);
+        cumToken.push(_last(cumToken) + (paid == address(0) ? 0 : amount / kols)); // rounding dust stays here
+        cumBnb.push(_last(cumBnb) + (paid == address(0) ? amount / kols : 0));
+        cumUsd.push(_last(cumUsd) + usd / kols);
+        emit Payout(k, milestonesPaid, kols, paid, amount, usd, relay.source());
     }
 
-    /// @dev Self-call only, so `checkMilestone` can catch a failing token and fall back to BNB.
-    function payInToken(address payToken, uint256 bnb, address[] calldata kols) external returns (uint256) {
+    /// @dev Self-call only, so `checkMilestone` can catch a failing purchase and fall back to BNB.
+    function buyPayoutToken(address payToken, uint256 bnb) external returns (uint256) {
         if (msg.sender != address(this)) revert OnlySelf();
         uint256 before = IERC20(payToken).balanceOf(address(this));
         if (desk.isStock(payToken)) {
@@ -164,18 +199,51 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
             // shortcut: no minimum output, so a sandwich trade can take value; on mainnet use an oracle/TWAP minimum.
             router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: bnb}(0, path, address(this), block.timestamp);
         }
-        return _split(payToken, IERC20(payToken).balanceOf(address(this)) - before, kols);
+        return IERC20(payToken).balanceOf(address(this)) - before;
     }
 
-    /// @dev Equal shares; rounding dust stays in the vault.
-    function _split(address payToken, uint256 amount, address[] memory kols) private returns (uint256) {
-        uint256 share = amount / kols.length;
-        for (uint256 i; i < kols.length; ++i) {
-            earned[kols[i]][payToken] += share;
-            if (payToken == address(0)) kols[i].forceSafeTransferETH(share);
-            else payToken.safeTransfer(kols[i], share);
+    /// @notice Everything a KOL has earned so far: payout token, BNB (fallback or BNB payout), and USD at payout time.
+    function earned(address kol) public view returns (uint256 tokenAmount, uint256 bnbAmount, uint256 usd) {
+        uint256 len = kolCountAt.length;
+        uint256 f = _firstPayoutFor(launcher.kolNumber(kol));
+        if (f == len) return (0, 0, 0);
+        tokenAmount = cumToken[len - 1] - (f == 0 ? 0 : cumToken[f - 1]);
+        bnbAmount = cumBnb[len - 1] - (f == 0 ? 0 : cumBnb[f - 1]);
+        usd = cumUsd[len - 1] - (f == 0 ? 0 : cumUsd[f - 1]);
+    }
+
+    /// @notice What a KOL can claim right now.
+    function claimable(address kol) public view returns (uint256 tokenAmount, uint256 bnbAmount) {
+        (uint256 t, uint256 b,) = earned(kol);
+        return (t - claimedToken[kol], b - claimedBnb[kol]);
+    }
+
+    /// @notice Send a KOL everything they earned. Anyone can call; the funds only ever go to the KOL.
+    function claim(address kol) external nonReentrant {
+        (uint256 t, uint256 b) = claimable(kol);
+        if (t == 0 && b == 0) revert NothingToPay();
+        claimedToken[kol] += t;
+        claimedBnb[kol] += b;
+        bnbOwed -= b;
+        address paid = launcher.payoutToken();
+        if (t > 0) paid.safeTransfer(kol, t);
+        if (b > 0) kol.forceSafeTransferETH(b);
+        emit Claimed(kol, paid, t, b);
+    }
+
+    /// @dev First payout KOL number `k` shares (binary search; kolCountAt never goes down). len = none; k = 0 = none.
+    function _firstPayoutFor(uint256 k) internal view returns (uint256 lo) {
+        uint256 hi = kolCountAt.length;
+        if (k == 0) return hi;
+        while (lo < hi) {
+            uint256 mid = (lo + hi) / 2;
+            if (kolCountAt[mid] >= k) hi = mid;
+            else lo = mid + 1;
         }
-        return amount;
+    }
+
+    function _last(uint256[] storage a) private view returns (uint256) {
+        return a.length == 0 ? 0 : a[a.length - 1];
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -185,19 +253,19 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
     /// @inheritdoc DirectLaunchVaultBase
     function description() public view override returns (string memory) {
         return string.concat(
-            "KabalKult vault (testnet): receives 100% of the token tax in BNB. At milestone 1 (market cap $",
-            (launcher.milestoneUsd(0) / 1e18).toString(),
-            ") it spends ",
-            (uint256(launcher.milestone1ShareBps()) / 100).toString(),
-            "% of its BNB, at milestone 2 ($",
-            (launcher.milestoneUsd(1) / 1e18).toString(),
-            ") the rest, on payout token ",
+            "KabalKult vault (testnet): receives 100% of the token tax in BNB. At each of ",
+            launcher.milestoneCount().toString(),
+            " USD market-cap milestones (next: $",
+            (launcher.milestoneUsd(milestonesPaid < launcher.milestoneCount() ? milestonesPaid : launcher.milestoneCount() - 1) / 1e18).toString(),
+            ") it spends that milestone's share of its BNB on payout token ",
             Strings.toHexString(launcher.payoutToken()),
-            " (0x0 = BNB) and splits it equally among the KOLs listed on launcher ",
+            " (0x0 = BNB); every KOL on launcher ",
             Strings.toHexString(address(launcher)),
-            ". No fee, no creator share. Milestones paid: ",
+            " claims an equal share. No fee, no creator share. Milestones paid: ",
             milestonesPaid.toString(),
-            "/2. Revenue so far: ",
+            "/",
+            launcher.milestoneCount().toString(),
+            ". Revenue so far: ",
             totalRevenue().toString(),
             " wei."
         );
@@ -207,8 +275,8 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
     function vaultUISchema() public pure override returns (VaultUISchema memory schema) {
         schema.vaultType = "KabalKultVault";
         schema.description =
-            "KOL payout in tokenized stock (or any token, or BNB) at two USD market-cap milestones. Anyone can trigger a reached milestone.";
-        schema.methods = new VaultMethodSchema[](6);
+            "KOL payout in tokenized stock (or any token, or BNB) at up to 10 USD market-cap milestones. Anyone can trigger a reached milestone; KOLs claim.";
+        schema.methods = new VaultMethodSchema[](7);
 
         schema.methods[0].name = "marketCapUsd";
         schema.methods[0].description = "Live market cap in USD.";
@@ -216,17 +284,18 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
         schema.methods[0].outputs[0] = FieldDescriptor("usd", "uint256", "Market cap in USD", 18);
 
         schema.methods[1].name = "milestonesPaid";
-        schema.methods[1].description = "How many of the 2 milestones are paid.";
+        schema.methods[1].description = "How many milestones are paid.";
         schema.methods[1].outputs = new FieldDescriptor[](1);
         schema.methods[1].outputs[0] = FieldDescriptor("count", "uint256", "Milestones paid", 0);
 
         schema.methods[2].name = "earned";
-        schema.methods[2].description = "Amount of a token a KOL has received (0x0 = BNB).";
-        schema.methods[2].inputs = new FieldDescriptor[](2);
+        schema.methods[2].description = "Everything a KOL has earned: payout token, BNB, USD value.";
+        schema.methods[2].inputs = new FieldDescriptor[](1);
         schema.methods[2].inputs[0] = FieldDescriptor("kol", "address", "KOL wallet", 0);
-        schema.methods[2].inputs[1] = FieldDescriptor("token", "address", "Payout token (0x0 = BNB)", 0);
-        schema.methods[2].outputs = new FieldDescriptor[](1);
-        schema.methods[2].outputs[0] = FieldDescriptor("amount", "uint256", "Amount received", 18);
+        schema.methods[2].outputs = new FieldDescriptor[](3);
+        schema.methods[2].outputs[0] = FieldDescriptor("tokenAmount", "uint256", "Payout token earned", 18);
+        schema.methods[2].outputs[1] = FieldDescriptor("bnbAmount", "uint256", "BNB earned", 18);
+        schema.methods[2].outputs[2] = FieldDescriptor("usd", "uint256", "USD value at payout", 18);
 
         schema.methods[3].name = "totalRevenue";
         schema.methods[3].description = "BNB the vault has received so far.";
@@ -234,14 +303,21 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
         schema.methods[3].outputs[0] = FieldDescriptor("amount", "uint256", "Total BNB received", 18);
 
         schema.methods[4].name = "checkMilestone";
-        schema.methods[4].description = "Pay the next milestone if the market cap has reached it.";
+        schema.methods[4].description = "Pay every milestone the market cap has reached.";
         schema.methods[4].isWriteMethod = true;
 
-        schema.methods[5].name = "earnedUsd";
-        schema.methods[5].description = "USD value a KOL has received, at the BNB price of each payout.";
+        schema.methods[5].name = "claimable";
+        schema.methods[5].description = "What a KOL can claim now.";
         schema.methods[5].inputs = new FieldDescriptor[](1);
         schema.methods[5].inputs[0] = FieldDescriptor("kol", "address", "KOL wallet", 0);
-        schema.methods[5].outputs = new FieldDescriptor[](1);
-        schema.methods[5].outputs[0] = FieldDescriptor("usd", "uint256", "USD received", 18);
+        schema.methods[5].outputs = new FieldDescriptor[](2);
+        schema.methods[5].outputs[0] = FieldDescriptor("tokenAmount", "uint256", "Payout token", 18);
+        schema.methods[5].outputs[1] = FieldDescriptor("bnbAmount", "uint256", "BNB", 18);
+
+        schema.methods[6].name = "claim";
+        schema.methods[6].description = "Send a KOL everything they earned (anyone can call; funds go to the KOL).";
+        schema.methods[6].isWriteMethod = true;
+        schema.methods[6].inputs = new FieldDescriptor[](1);
+        schema.methods[6].inputs[0] = FieldDescriptor("kol", "address", "KOL wallet", 0);
     }
 }

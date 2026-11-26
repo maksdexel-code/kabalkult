@@ -11,9 +11,10 @@ import {KabalKultVaultFactory} from "src/KabalKultVaultFactory.sol";
 import {StockDesk} from "src/StockDesk.sol";
 
 /// @notice One real launch: Portal.newLauncher (salt lock fee) then launcher.launch (poolQuote BNB, locked forever).
-///         Milestones are 1.3x and 1.8x the launch market cap (= poolQuote x KK_BNB_USD, whole supply in the pool).
-///         Options (env, defaults in brackets): KK_BUY_TAX_BPS [500], KK_SELL_TAX_BPS [500],
-///         KK_PAYOUT_TOKEN [the desk's mNVDAb; 0x000…0 = BNB], KK_M1_SHARE_BPS [5000].
+///         Launch MC = poolQuote x KK_BNB_USD (whole supply in the pool). Options (env, defaults in brackets):
+///         KK_MILESTONES_X10 [13,18 = 1.3x and 1.8x launch MC], KK_MILESTONE_SHARES_BPS [5000,5000],
+///         KK_BUY_TAX_BPS [500], KK_SELL_TAX_BPS [500], KK_PAYOUT_TOKEN [the desk's mNVDAb; 0x000…0 = BNB],
+///         KK_CAMPAIGN_SLOTS [50].
 contract Launch is Script {
     address constant TOKEN_IMPL = 0x7777c57ff7dc441c1715b2e36fa581c48B782222;
 
@@ -32,14 +33,18 @@ contract Launch is Script {
         c.poolQuote = vm.envOr("KK_POOL_QUOTE", uint256(1.1 ether));
         c.namedKols = vm.envAddress("KK_NAMED_KOLS", ",");
         c.campaignRoot = vm.envOr("KK_CAMPAIGN_ROOT", bytes32(0));
+        c.campaignSlots = uint32(vm.envOr("KK_CAMPAIGN_SLOTS", uint256(50)));
         uint256 launchMc = c.poolQuote * bnbUsd / 1e18;
-        c.milestone1Usd = launchMc * 13 / 10;
-        c.milestone2Usd = launchMc * 18 / 10;
+        uint256[] memory x10 = vm.envOr("KK_MILESTONES_X10", ",", _pair(13, 18)); // 13 = 1.3x launch MC
+        c.milestoneUsd = new uint256[](x10.length);
+        for (uint256 i; i < x10.length; ++i) c.milestoneUsd[i] = launchMc * x10[i] / 10;
+        uint256[] memory shares = vm.envOr("KK_MILESTONE_SHARES_BPS", ",", _pair(5000, 5000));
+        c.milestoneShareBps = new uint16[](shares.length);
+        for (uint256 i; i < shares.length; ++i) c.milestoneShareBps[i] = uint16(shares[i]);
         c.buyTaxBps = uint16(vm.envOr("KK_BUY_TAX_BPS", uint256(500)));
         c.sellTaxBps = uint16(vm.envOr("KK_SELL_TAX_BPS", uint256(500)));
         StockDesk desk = StockDesk(KabalKultVaultFactory(KabalKultLauncherFactory(factory).vaultFactory()).desk());
         c.payoutToken = vm.envOr("KK_PAYOUT_TOKEN", desk.stocks()[0]);
-        c.milestone1ShareBps = uint16(vm.envOr("KK_M1_SHARE_BPS", uint256(5000)));
 
         vm.startBroadcast(pk);
         KabalKultLauncher l =
@@ -53,11 +58,17 @@ contract Launch is Script {
         console2.log("Pool    ", l.pool());
         console2.log("Vault   ", vault);
         console2.log("Launch MC USD   ", launchMc / 1e18);
-        console2.log("Milestone 1 USD ", c.milestone1Usd / 1e18);
-        console2.log("Milestone 2 USD ", c.milestone2Usd / 1e18);
+        for (uint256 i; i < c.milestoneUsd.length; ++i) {
+            console2.log("Milestone USD / share bps", c.milestoneUsd[i] / 1e18, c.milestoneShareBps[i]);
+        }
         console2.log("Payout token    ", c.payoutToken);
         console2.log("Tax buy/sell bps", c.buyTaxBps, c.sellTaxBps);
-        console2.log("M1 share bps    ", c.milestone1ShareBps);
+        console2.log("Campaign slots  ", c.campaignSlots);
+    }
+
+    function _pair(uint256 a, uint256 b) internal pure returns (uint256[] memory p) {
+        p = new uint256[](2);
+        (p[0], p[1]) = (a, b);
     }
 
     /// @dev Same as Flap's ForkBase: the Portal requires the token address to end in 0x7777.

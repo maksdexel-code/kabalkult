@@ -47,6 +47,19 @@ tick() {
     --private-key "$DEPLOYER_PRIVATE_KEY" --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" --json | jq -r .transactionHash)
   log --arg relay "$RELAY" --arg bnbUsd "$BNB" --arg stocks "$STOCKS" --arg source "$SRC" --arg tx "$TX"
   echo "pushed: $TX"
+  autopay
+}
+
+# With fresh prices on chain, pay any reached milestone (a dry call first, so nothing is spent when there is none).
+autopay() {
+  local v=${KK_VAULT:-$(awk '/Vault/{print $2; exit}' launch/launch.txt 2>/dev/null)}
+  [ -n "$v" ] || return 0
+  cast call "$v" "checkMilestone()" --from "$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")" \
+    --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" >/dev/null 2>&1 || return 0
+  TX=$(cast send "$v" "checkMilestone()" --private-key "$DEPLOYER_PRIVATE_KEY" \
+    --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" --json | jq -r .transactionHash)
+  log --arg vault "$v" --arg action checkMilestone --arg tx "$TX"
+  echo "milestone paid: $TX"
 }
 
 while true; do
