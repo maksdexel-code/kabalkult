@@ -21,6 +21,7 @@ contract KabalKultVaultFactory is DirectLaunchVaultFactoryBase {
     address public immutable launcherFactory;
     address public immutable relay;
     address public immutable desk;
+    address public immutable router;
 
     error NotFromLauncherFactory(address launcher);
     error VaultDataLauncherMismatch(address expected, address got);
@@ -29,11 +30,14 @@ contract KabalKultVaultFactory is DirectLaunchVaultFactoryBase {
     event FlapVaultImplementationUpgraded(address implementation);
     event KabalKultVaultCreated(address indexed vault, address indexed token, address indexed launcher);
 
-    constructor(address launcherFactory_, address relay_, address desk_) {
-        if (launcherFactory_ == address(0) || relay_ == address(0) || desk_ == address(0)) revert ZeroAddress();
+    constructor(address launcherFactory_, address relay_, address desk_, address router_) {
+        if (launcherFactory_ == address(0) || relay_ == address(0) || desk_ == address(0) || router_ == address(0)) {
+            revert ZeroAddress();
+        }
         launcherFactory = launcherFactory_;
         relay = relay_;
         desk = desk_;
+        router = router_;
         beacon = address(new UpgradeableBeacon(address(this), address(new KabalKultVault())));
     }
 
@@ -58,7 +62,7 @@ contract KabalKultVaultFactory is DirectLaunchVaultFactoryBase {
         if (!IKabalKultLauncherCheck(creator).launching()) revert LauncherNotLaunching(creator);
 
         vault = LibClone.deployDeterministicERC1967BeaconProxy(beacon, bytes32(uint256(uint160(token))));
-        KabalKultVault(payable(vault)).initialize(token, creator, relay, desk);
+        KabalKultVault(payable(vault)).initialize(token, creator, relay, desk, router);
         emit KabalKultVaultCreated(vault, token, creator);
     }
 

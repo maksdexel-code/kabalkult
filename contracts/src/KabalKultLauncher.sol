@@ -13,9 +13,9 @@ import {LauncherDescription} from "src/flap/LauncherHelper.sol";
 string constant KK_TITLE_EN = "KabalKult: KOLs paid in stock, only if the meme performs";
 string constant KK_TITLE_ZH = unicode"KabalKult：只有 meme 表现达标，KOL 才获得股票报酬";
 string constant KK_SUMMARY_EN =
-    "100% of the 5% buy/sell tax collects in a vault. When the market cap reaches the creator's two USD milestones, the vault buys mNVDAb (testnet mock NVIDIA stock) and splits it equally among the listed KOLs: milestone 1 spends half the vault, milestone 2 the rest. KOLs get no meme bag to dump. Testnet only, unaudited.";
+    "100% of the creator-set buy/sell tax collects in a vault. When the market cap reaches the creator's two USD milestones, the vault buys the creator's payout token (a testnet mock stock such as mNVDAb, any token with a BNB pool, or plain BNB) and splits it equally among the listed KOLs: milestone 1 spends the creator-set share of the vault, milestone 2 the rest. KOLs get no meme bag to dump. Testnet only, unaudited.";
 string constant KK_SUMMARY_ZH =
-    unicode"5% 买卖税全部进入金库。市值达到创建者设定的两个美元里程碑时，金库购买 mNVDAb（测试网模拟英伟达股票）并平均分给名单上的 KOL：第一个里程碑使用金库一半资金，第二个使用剩余部分。KOL 不持有可抛售的 meme 代币。仅限测试网，未经审计。";
+    unicode"创建者设定的买卖税全部进入金库。市值达到创建者设定的两个美元里程碑时，金库购买创建者选择的支付代币（测试网模拟股票如 mNVDAb、任何有 BNB 池的代币，或 BNB）并平均分给名单上的 KOL：第一个里程碑使用创建者设定比例的金库资金，第二个使用剩余部分。KOL 不持有可抛售的 meme 代币。仅限测试网，未经审计。";
 
 /// @notice Payload for `Portal.newLauncher(factory, abi.encode(KabalKultConfig))`.
 /// @param salt          Launch salt, mined so the token address ends in `0x7777`.
@@ -24,6 +24,10 @@ string constant KK_SUMMARY_ZH =
 /// @param campaignRoot  Merkle root of invited creators (OZ StandardMerkleTree, leaf = address). 0 = no campaign.
 /// @param milestone1Usd First market-cap target, USD with 18 decimals.
 /// @param milestone2Usd Second market-cap target, USD with 18 decimals. Must be above the first.
+/// @param buyTaxBps     Buy tax in bps, 0..1000 (10%). The higher of buy/sell must be at least 100 (1%).
+/// @param sellTaxBps    Sell tax in bps, 0..1000.
+/// @param payoutToken   What KOLs are paid in: a StockDesk mock stock, any token with a BNB pool, or address(0) = BNB.
+/// @param milestone1ShareBps Share of the vault's BNB spent at milestone 1 (1..9999); milestone 2 gets the rest.
 struct KabalKultConfig {
     string name;
     string symbol;
@@ -34,6 +38,10 @@ struct KabalKultConfig {
     bytes32 campaignRoot;
     uint256 milestone1Usd;
     uint256 milestone2Usd;
+    uint16 buyTaxBps;
+    uint16 sellTaxBps;
+    address payoutToken;
+    uint16 milestone1ShareBps;
 }
 
 /// @title KabalKultLauncher
@@ -46,7 +54,6 @@ struct KabalKultConfig {
 /// @dev Deployed by `KabalKultLauncherFactory` as an ERC1967 beacon proxy.
 contract KabalKultLauncher is LauncherBase, Initializable {
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 ether;
-    uint16 public constant TAX_BPS = 500;
     uint256 public constant MAX_CAMPAIGN_SLOTS = 50;
 
     address public creator;
@@ -55,6 +62,10 @@ contract KabalKultLauncher is LauncherBase, Initializable {
     uint256 public poolQuote;
     bytes32 public campaignRoot;
     uint256[2] public milestoneUsd;
+    uint16 public buyTaxBps;
+    uint16 public sellTaxBps;
+    address public payoutToken;
+    uint16 public milestone1ShareBps;
     string public name;
     string public symbol;
     string public meta;
@@ -100,6 +111,10 @@ contract KabalKultLauncher is LauncherBase, Initializable {
         poolQuote = c.poolQuote;
         campaignRoot = c.campaignRoot;
         milestoneUsd = [c.milestone1Usd, c.milestone2Usd];
+        buyTaxBps = c.buyTaxBps;
+        sellTaxBps = c.sellTaxBps;
+        payoutToken = c.payoutToken;
+        milestone1ShareBps = c.milestone1ShareBps;
         name = c.name;
         symbol = c.symbol;
         meta = c.meta;
@@ -181,8 +196,8 @@ contract KabalKultLauncher is LauncherBase, Initializable {
         p.salt = launchSalt;
         p.poolQuote = poolQuote;
         p.poolToken = TOTAL_SUPPLY;
-        p.buyTaxRate = TAX_BPS;
-        p.sellTaxRate = TAX_BPS;
+        p.buyTaxRate = buyTaxBps;
+        p.sellTaxRate = sellTaxBps;
         p.taxDuration = 30 days;
         p.antiFarmerDuration = 1 days;
         p.feeConfigs = new IPortalTypes.FeeConfig[](1);

@@ -6,9 +6,14 @@ import {ClonesUpgradeable} from "@openzeppelin-contracts-upgradeable/proxy/Clone
 import {IPortal} from "src/flap/IPortal.sol";
 import {LaunchVaultAddresses} from "src/flap/LaunchVaultAddresses.sol";
 import {KabalKultLauncher, KabalKultConfig} from "src/KabalKultLauncher.sol";
+import {KabalKultLauncherFactory} from "src/KabalKultLauncherFactory.sol";
+import {KabalKultVaultFactory} from "src/KabalKultVaultFactory.sol";
+import {StockDesk} from "src/StockDesk.sol";
 
 /// @notice One real launch: Portal.newLauncher (salt lock fee) then launcher.launch (poolQuote BNB, locked forever).
 ///         Milestones are 1.3x and 1.8x the launch market cap (= poolQuote x KK_BNB_USD, whole supply in the pool).
+///         Options (env, defaults in brackets): KK_BUY_TAX_BPS [500], KK_SELL_TAX_BPS [500],
+///         KK_PAYOUT_TOKEN [the desk's mNVDAb; 0x000…0 = BNB], KK_M1_SHARE_BPS [5000].
 contract Launch is Script {
     address constant TOKEN_IMPL = 0x7777c57ff7dc441c1715b2e36fa581c48B782222;
 
@@ -30,6 +35,11 @@ contract Launch is Script {
         uint256 launchMc = c.poolQuote * bnbUsd / 1e18;
         c.milestone1Usd = launchMc * 13 / 10;
         c.milestone2Usd = launchMc * 18 / 10;
+        c.buyTaxBps = uint16(vm.envOr("KK_BUY_TAX_BPS", uint256(500)));
+        c.sellTaxBps = uint16(vm.envOr("KK_SELL_TAX_BPS", uint256(500)));
+        StockDesk desk = StockDesk(KabalKultVaultFactory(KabalKultLauncherFactory(factory).vaultFactory()).desk());
+        c.payoutToken = vm.envOr("KK_PAYOUT_TOKEN", desk.stocks()[0]);
+        c.milestone1ShareBps = uint16(vm.envOr("KK_M1_SHARE_BPS", uint256(5000)));
 
         vm.startBroadcast(pk);
         KabalKultLauncher l =
@@ -45,6 +55,9 @@ contract Launch is Script {
         console2.log("Launch MC USD   ", launchMc / 1e18);
         console2.log("Milestone 1 USD ", c.milestone1Usd / 1e18);
         console2.log("Milestone 2 USD ", c.milestone2Usd / 1e18);
+        console2.log("Payout token    ", c.payoutToken);
+        console2.log("Tax buy/sell bps", c.buyTaxBps, c.sellTaxBps);
+        console2.log("M1 share bps    ", c.milestone1ShareBps);
     }
 
     /// @dev Same as Flap's ForkBase: the Portal requires the token address to end in 0x7777.

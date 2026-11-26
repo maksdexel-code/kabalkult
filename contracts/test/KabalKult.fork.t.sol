@@ -43,11 +43,19 @@ contract KabalKultForkTest is ForkBase {
     function _deploy() internal {
         _unpause(); // match live testnet: creation open
         relay = new PriceRelay(address(this));
-        relay.update(BNB_USD, NVDA_USD, "test");
+        _price(BNB_USD);
         desk = new StockDesk(relay);
-        stock = IERC20(address(desk.stock()));
-        lf = new KabalKultLauncherFactory(address(relay), address(desk));
+        stock = IERC20(desk.stocks()[0]); // mNVDAb
+        lf = new KabalKultLauncherFactory(address(relay), address(desk), v2Router);
         vf = KabalKultVaultFactory(lf.vaultFactory());
+    }
+
+    function _price(uint256 bnbUsd) internal {
+        string[] memory t = new string[](3);
+        (t[0], t[1], t[2]) = ("NVDA", "TSLA", "AAPL");
+        uint256[] memory p = new uint256[](3);
+        (p[0], p[1], p[2]) = (NVDA_USD, 400e18, 230e18);
+        relay.update(bnbUsd, t, p, "test");
     }
 
     function _config(bytes32 seed) internal returns (KabalKultConfig memory c) {
@@ -62,10 +70,18 @@ contract KabalKultForkTest is ForkBase {
         c.campaignRoot = _root(_leaves());
         c.milestone1Usd = M1;
         c.milestone2Usd = M2;
+        c.buyTaxBps = 500;
+        c.sellTaxBps = 500;
+        c.payoutToken = address(stock);
+        c.milestone1ShareBps = 5000;
     }
 
     function _newKK(bytes32 seed) internal returns (KabalKultLauncher) {
-        return KabalKultLauncher(_newLauncher(address(lf), abi.encode(_config(seed))));
+        return _newKK(_config(seed));
+    }
+
+    function _newKK(KabalKultConfig memory c) internal returns (KabalKultLauncher) {
+        return KabalKultLauncher(_newLauncher(address(lf), abi.encode(c)));
     }
 
     function _launch(KabalKultLauncher l) internal returns (KabalKultVault) {
@@ -77,10 +93,14 @@ contract KabalKultForkTest is ForkBase {
 
     /// @dev Launch, trade until tax reaches the vault, refresh the price (trading warps past MAX_AGE).
     function _launchAndEarn(bytes32 seed) internal returns (KabalKultLauncher l, KabalKultVault v) {
-        l = _newKK(seed);
+        return _launchAndEarn(_config(seed));
+    }
+
+    function _launchAndEarn(KabalKultConfig memory c) internal returns (KabalKultLauncher l, KabalKultVault v) {
+        l = _newKK(c);
         v = _launch(l);
         _generateTaxAndDispatch(l.token());
-        relay.update(BNB_USD, NVDA_USD, "test");
+        _price(BNB_USD);
         assertGt(address(v).balance, 0, "tax reached the vault");
     }
 
@@ -171,7 +191,8 @@ contract KabalKultForkTest is ForkBase {
         uint256 share1 = (bal / 2) * BNB_USD / NVDA_USD / 2;
         assertEq(stock.balanceOf(kolA), share1, "kolA M1");
         assertEq(stock.balanceOf(kolB), share1, "kolB M1");
-        assertEq(v.earned(kolA), share1);
+        assertEq(v.earned(kolA, address(stock)), share1);
+        assertEq(v.earnedUsd(kolA), (bal / 2) * BNB_USD / 1e18 / 2, "USD value at payout");
 
         // A campaign creator joins after the launch: shares milestone 2 only.
         _join(l, 0);
@@ -193,12 +214,12 @@ contract KabalKultForkTest is ForkBase {
 
         // Price the market cap between M1 and M2: M1 must not pay again.
         uint256 between = BNB_USD * ((M1 + M2) / 2) / v.marketCapUsd();
-        relay.update(between, NVDA_USD, "test");
+        _price(between);
         vm.expectRevert(abi.encodeWithSelector(KabalKultVault.NotReached.selector, v.marketCapUsd(), M2));
         v.checkMilestone();
         assertEq(v.milestonesPaid(), 1);
 
-        relay.update(BNB_USD, NVDA_USD, "test");
+        _price(BNB_USD);
         v.checkMilestone();
         vm.expectRevert(KabalKultVault.AllPaid.selector);
         v.checkMilestone();
@@ -313,7 +334,7 @@ contract KabalKultForkTest is ForkBase {
 
         // The largest possible payout (2 named + 50 slots) fits easily in a block.
         _generateTaxAndDispatch(l.token());
-        relay.update(BNB_USD, NVDA_USD, "test");
+        _price(BNB_USD);
         uint256 g = gasleft();
         v.checkMilestone();
         emit log_named_uint("gas for a 52-KOL payout", g - gasleft());
@@ -359,6 +380,92 @@ contract KabalKultForkTest is ForkBase {
         c.namedKols[1] = kolA;
         vm.prank(creator);
         vm.expectRevert(KabalKultLauncher.InvalidConfig.selector);
+        portal.newLauncher{value: fee}(address(lf), abi.encode(c));
+    }
+
+    // ─── creator options: tax, payout token, split ───────────────────────────
+
+    function test_customTaxAndSplit() public {
+        _deploy();
+        KabalKultConfig memory c = _config("tax-split");
+        (c.buyTaxBps, c.sellTaxBps, c.milestone1ShareBps) = (0, 300, 3000); // sell-only tax, M1 spends 30%
+        (KabalKultLauncher l, KabalKultVault v) = _launchAndEarn(c);
+        assertEq(l.buyTaxBps(), 0);
+        assertEq(l.sellTaxBps(), 300);
+        uint256 bal = address(v).balance;
+        v.checkMilestone();
+        assertEq(v.totalSpent(), bal * 3000 / 10_000, "M1 spends the creator's share");
+        assertEq(stock.balanceOf(kolA), (bal * 3000 / 10_000) * BNB_USD / NVDA_USD / 2);
+        v.checkMilestone();
+        assertEq(address(v).balance, 0, "M2 spends the rest");
+    }
+
+    function test_maxTaxLaunches() public {
+        _deploy();
+        KabalKultConfig memory c = _config("tax-max");
+        (c.buyTaxBps, c.sellTaxBps) = (1000, 1000);
+        _launchAndEarn(c);
+    }
+
+    function test_payoutInBnb() public {
+        _deploy();
+        KabalKultConfig memory c = _config("bnb");
+        c.payoutToken = address(0);
+        (, KabalKultVault v) = _launchAndEarn(c);
+        uint256 bal = address(v).balance;
+        uint256 a0 = kolA.balance;
+        v.checkMilestone();
+        assertEq(kolA.balance - a0, bal / 2 / 2, "kolA got BNB");
+        assertEq(v.earned(kolA, address(0)), bal / 2 / 2);
+    }
+
+    function test_payoutInAnyPooledToken() public {
+        _deploy();
+        // Any token with a BNB pool works: here another meme launched through Flap a moment ago.
+        address other = _launch(_newKK("other")).token();
+        vm.warp(block.timestamp + 601);
+        KabalKultConfig memory c = _config("any-token");
+        c.payoutToken = other;
+        (, KabalKultVault v) = _launchAndEarn(c);
+        v.checkMilestone();
+        assertGt(IERC20(other).balanceOf(kolA), 0, "kolA got the chosen token");
+        assertEq(v.earned(kolA, other), IERC20(other).balanceOf(kolA));
+        assertEq(v.earned(kolA, address(0)), 0, "no BNB fallback needed");
+    }
+
+    function test_unbuyableTokenFallsBackToBnb() public {
+        _deploy();
+        KabalKultConfig memory c = _config("fallback");
+        c.payoutToken = address(relay); // has code, but is not a token and has no pool
+        (, KabalKultVault v) = _launchAndEarn(c);
+        uint256 bal = address(v).balance;
+        v.checkMilestone();
+        assertEq(v.milestonesPaid(), 1, "the milestone still pays");
+        assertEq(kolA.balance, bal / 2 / 2, "paid in BNB instead");
+        assertEq(v.earned(kolA, address(0)), bal / 2 / 2);
+    }
+
+    function test_factoryRejectsBadOptions() public {
+        _deploy();
+        KabalKultConfig memory c = _config("opts");
+        c.buyTaxBps = 1001;
+        _expectNewLauncherRevert(c, KabalKultLauncherFactory.InvalidTax.selector);
+        (c.buyTaxBps, c.sellTaxBps) = (50, 99); // higher side under 1%
+        _expectNewLauncherRevert(c, KabalKultLauncherFactory.InvalidTax.selector);
+        (c.buyTaxBps, c.sellTaxBps) = (500, 500);
+        c.milestone1ShareBps = 0;
+        _expectNewLauncherRevert(c, KabalKultLauncherFactory.InvalidPayout.selector);
+        c.milestone1ShareBps = 10_000;
+        _expectNewLauncherRevert(c, KabalKultLauncherFactory.InvalidPayout.selector);
+        c.milestone1ShareBps = 5000;
+        c.payoutToken = alice; // a wallet, not a token
+        _expectNewLauncherRevert(c, KabalKultLauncherFactory.InvalidPayout.selector);
+    }
+
+    function _expectNewLauncherRevert(KabalKultConfig memory c, bytes4 sel) internal {
+        uint256 fee = portal.SALT_LOCK_FEE();
+        vm.prank(creator);
+        vm.expectRevert(sel);
         portal.newLauncher{value: fee}(address(lf), abi.encode(c));
     }
 }

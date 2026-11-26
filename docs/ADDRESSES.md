@@ -24,7 +24,7 @@ Do **not** confuse with the bonding-curve Portal `0x5bEacaF7ABCbB3aB280e80D007FD
 | Contract | Address | Source |
 |---|---|---|
 | WBNB | `0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd` | [test/ForkAddresses.sol](https://github.com/flap-sh/FlapPoolLaunchVaultExample/blob/main/test/ForkAddresses.sol) |
-| V2 Router (buys/sells in fork tests) | `0xc9D63ddCB9549578057EAB6A83a543DdFEE2b8c3` | test/ForkAddresses.sol — ✅ swaps worked in our fork probe |
+| V2 Router (buys/sells; vault buys non-stock payout tokens here) | `0xc9D63ddCB9549578057EAB6A83a543DdFEE2b8c3` | test/ForkAddresses.sol — ✅ swaps worked in our fork probe; ✅ `factory()` = `0x6725F303b657a9451d8BA641348b6761A6CC7a17`, the same V2 factory as PancakeSwap's testnet router `0xD99D1c33F9fC3444f8101754aBC46c52416550D1`, so it reaches PancakeSwap testnet pools |
 
 ## Flap UI template reference deployment (for comparison only)
 
@@ -40,7 +40,7 @@ Do **not** confuse with the bonding-curve Portal `0x5bEacaF7ABCbB3aB280e80D007FD
 |---|---|---|
 | CMC Pro base URL | `https://pro-api.coinmarketcap.com` (header `X-CMC_PRO_API_KEY`) | [CMC auth guide](https://coinmarketcap.com/api/documentation/guides/authentication) |
 | CMC BNB/USD | `GET /v3/cryptocurrency/quotes/latest?symbol=BNB` | [CMC crypto reference](https://coinmarketcap.com/api/documentation/pro-api-reference/cryptocurrency) |
-| CMC NVDA (RWA) | `GET /v5/real-world-assets/quotes/latest?symbol=NVDA` | [CMC RWA reference](https://coinmarketcap.com/api/documentation/pro-api-reference/real-world-assets) |
+| CMC stocks (RWA) | `GET /v5/real-world-assets/quotes/latest?symbol=NVDA,TSLA,AAPL` (1 credit for all three; ✅ live call 26 Nov) | [CMC RWA reference](https://coinmarketcap.com/api/documentation/pro-api-reference/real-world-assets) |
 | CMC key usage | `GET /v1/key/info` (0 credits) | [CMC tools reference](https://coinmarketcap.com/api/documentation/pro-api-reference/tools) |
 | Real NVIDIA bStock on CMC | NVDAB, CMC id 40215 | [CMC tokenized stocks](https://coinmarketcap.com/view/tokenized-stock/) |
 | Atlas feeds | **Unknown** — Chainlink-compatible `latestRoundData()`; no public BSC/testnet addresses | [Atlas docs](https://docs.atlasoracle.io/developers/api-reference/single-feed-contract) — ask Atlas booth |

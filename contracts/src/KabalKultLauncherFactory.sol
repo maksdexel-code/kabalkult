@@ -22,13 +22,15 @@ contract KabalKultLauncherFactory is LauncherFactoryBase {
     error EmptyField();
     error InvalidMilestones();
     error InvalidKols();
+    error InvalidTax();
+    error InvalidPayout();
 
     event KabalKultLauncherCreated(address indexed launcher, address indexed creator, bytes32 launchSalt);
     event FlapLauncherImplementationUpgraded(address implementation);
 
-    constructor(address relay, address desk) {
+    constructor(address relay, address desk, address router) {
         beacon = address(new UpgradeableBeacon(address(this), address(new KabalKultLauncher())));
-        vaultFactory = address(new KabalKultVaultFactory(address(this), relay, desk));
+        vaultFactory = address(new KabalKultVaultFactory(address(this), relay, desk, router));
     }
 
     function _newLauncher(address creator, bytes calldata data) internal override returns (address launcher) {
@@ -44,6 +46,11 @@ contract KabalKultLauncherFactory is LauncherFactoryBase {
         if (c.namedKols.length > MAX_NAMED_KOLS || (c.namedKols.length == 0 && c.campaignRoot == bytes32(0))) {
             revert InvalidKols();
         }
+        // Flap's rule (same as its launch template): each side 0-10%, the higher side at least 1%.
+        uint16 maxTax = c.buyTaxBps > c.sellTaxBps ? c.buyTaxBps : c.sellTaxBps;
+        if (c.buyTaxBps > 1000 || c.sellTaxBps > 1000 || maxTax < 100) revert InvalidTax();
+        if (c.milestone1ShareBps == 0 || c.milestone1ShareBps >= 10_000) revert InvalidPayout();
+        if (c.payoutToken != address(0) && c.payoutToken.code.length == 0) revert InvalidPayout();
 
         launcher = LibClone.deployDeterministicERC1967BeaconProxy(beacon, c.salt);
         KabalKultLauncher(launcher).initialize{value: msg.value}(creator, vaultFactory, c);
@@ -57,8 +64,8 @@ contract KabalKultLauncherFactory is LauncherFactoryBase {
 
     function launcherDataSchema() external pure override returns (LauncherDataSchema memory schema) {
         schema.description =
-            "KabalKult: KOLs paid in tokenized stock, only if the meme performs. 100% of the 5% tax goes to a vault that buys mNVDAb at two USD market-cap milestones and splits it equally among named KOLs and campaign slot holders.";
-        FieldDescriptor[] memory f = new FieldDescriptor[](9);
+            "KabalKult: KOLs paid in tokenized stock, only if the meme performs. 100% of the creator-set tax goes to a vault that buys the payout token (mock stock, any token with a BNB pool, or BNB) at two USD market-cap milestones and splits it equally among named KOLs and campaign slot holders.";
+        FieldDescriptor[] memory f = new FieldDescriptor[](13);
         f[0] = FieldDescriptor("name", "string", "Token name", 0);
         f[1] = FieldDescriptor("symbol", "string", "Token symbol", 0);
         f[2] = FieldDescriptor("meta", "string", "Metadata URI", 0);
@@ -68,6 +75,10 @@ contract KabalKultLauncherFactory is LauncherFactoryBase {
         f[6] = FieldDescriptor("campaignRoot", "bytes32", "Merkle root of invited creators (0 = none)", 0);
         f[7] = FieldDescriptor("milestone1Usd", "uint256", "Milestone 1 market cap in USD", 18);
         f[8] = FieldDescriptor("milestone2Usd", "uint256", "Milestone 2 market cap in USD (above milestone 1)", 18);
+        f[9] = FieldDescriptor("buyTaxBps", "uint16", "Buy tax in bps (0-1000)", 0);
+        f[10] = FieldDescriptor("sellTaxBps", "uint16", "Sell tax in bps (0-1000; higher side >= 100)", 0);
+        f[11] = FieldDescriptor("payoutToken", "address", "KOL payout token: mock stock, any token with a BNB pool, or 0x0 = BNB", 0);
+        f[12] = FieldDescriptor("milestone1ShareBps", "uint16", "Share of vault BNB paid at milestone 1 (1-9999 bps)", 0);
         schema.fields = f;
     }
 }
