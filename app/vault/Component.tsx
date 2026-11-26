@@ -22,8 +22,8 @@ const STOCK_LABELS: Record<string, string> = {
   "0x14c502a6920a81a58c14cc554c810af1389efa57": "mTSLAb",
   "0x90a95459ed7caeea5f1fb427cf5502b4651e9b38": "mAAPLb",
 };
-const RULES = ["rules.tax", "rules.marketCap", "rules.size", "rules.purchase", "rules.kols", "rules.relay", "rules.expiry", "rules.upgrade"];
-const display = "font-['Impact','Haettenschweiler','Arial_Narrow_Bold',sans-serif] uppercase leading-[0.95] tracking-[0.01em] text-[#c4f004]";
+const RULES = ["rules.tax", "rules.marketCap", "rules.size", "rules.purchase", "rules.kols", "rules.expiry"];
+const display = "font-['Impact','Haettenschweiler','Arial_Narrow_Bold',sans-serif] uppercase leading-[0.95] tracking-[0.01em] text-[#c4f004] break-normal [hyphens:none] [text-wrap:balance]"; // whole words only
 const cell = "min-w-0 border-[3px] border-[#c4f004] -ml-[3px] -mt-[3px] bg-[#050505] p-4";
 const label = "block text-sm text-[#a3ab8c]";
 // Amounts stay bigint; only the text gets thousands separators.
@@ -183,7 +183,7 @@ export default function KabalkultVault(_props: VaultComponentProps) {
         <span className={label}>{t("labels.marketCap")}</span>
         <span className={`${display} block text-6xl tabular-nums`}>{deal ? usd(deal.mc) : "—"}</span>
         <span className="block text-sm text-[#a3ab8c]">
-          {deal ? `${t("labels.bnbPrice")} ${usd2(deal.bnbUsd)}, ${deal.source}, ${ageMin} ${t("labels.minAgo")}` : t("states.loading")}
+          {deal ? `${t("labels.priceLive")} ${ageMin} ${t("labels.minAgo")}` : t("states.loading")}
         </span>
         {deal && !deal.fresh ? <span className="mt-1 block text-sm text-[#ff6b6b]">{t("states.stale")}</span> : null}
       </div>
@@ -227,7 +227,7 @@ export default function KabalkultVault(_props: VaultComponentProps) {
         {!context.userAddress ? t("states.connect")
           : wallet.isWrongNetwork ? t("states.wrongNetwork")
           : !me ? t("states.loading")
-          : me.number > 0n ? `${t("labels.kolNumber")} ${me.number.toString()}, ${me.confirmed ? t("labels.confirmed") : t("labels.notConfirmed")}${me.xHandle ? `, ${t("labels.postedOnX")} @${me.xHandle}` : ""}`
+          : me.number > 0n ? `${t("labels.onList")}, ${me.confirmed ? t("labels.confirmed") : t("labels.notConfirmed")}${me.xHandle ? `, ${t("labels.postedOnX")} @${me.xHandle}` : ""}`
           : me.invited ? t("labels.invitedNotJoined") : t("labels.notKol")}
       </p>
       {me && me.number > 0n ? <div className="grid grid-cols-2 pl-[3px] pt-[3px] sm:grid-cols-3">
@@ -271,7 +271,7 @@ export default function KabalkultVault(_props: VaultComponentProps) {
         <AddressLink address={found.address} explorerBaseUrl={context.explorerBaseUrl} />
         <span className="block font-bold">
           {found.number > 0n
-            ? `${t("labels.lookupKol")} #${found.number.toString()}, ${found.invited ? t("labels.slotHolder") : t("labels.named")}, ${found.confirmed ? `✓ ${t("labels.confirmed")}` : t("labels.notConfirmed")}${found.xHandle ? `, ${t("labels.postedOnX")} @${found.xHandle}` : ""}`
+            ? `${t("labels.onList")}, ${found.invited ? t("labels.slotHolder") : t("labels.named")}, ${found.confirmed ? `✓ ${t("labels.confirmed")}` : t("labels.notConfirmed")}${found.xHandle ? `, ${t("labels.postedOnX")} @${found.xHandle}` : ""}`
             : found.invited ? t("labels.invitedOnly") : t("labels.notOnList")}
         </span>
         {found.number > 0n ? <span className="block text-sm">{usd2(found.earnedUsd)} {t("labels.earnedSoFar")}</span> : null}

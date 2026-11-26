@@ -17,3 +17,6 @@ public-repo/
 *.recovery.lock
 logs/relayer.out
 logs/relayer.pid
+# video assets (photo, slides, screenshots) and old local zips: private
+/video/
+/dist/

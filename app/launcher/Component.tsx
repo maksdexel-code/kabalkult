@@ -67,13 +67,15 @@ const body = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC"
 const shell: CSSProperties = {
   background: black, color: limeSoft, fontFamily: body, fontSize: 16, lineHeight: 1.5,
   border: rule, borderRadius: 0, overflow: "hidden", colorScheme: "dark", accentColor: magenta,
-  maxWidth: 1180, marginInline: "auto",
+  maxWidth: 1180, marginInline: "auto", containerType: "inline-size",
 };
-const pad = "clamp(16px, 4vw, 40px)";
+const pad = "clamp(16px, 4cqi, 40px)";
 const head = (size: string): CSSProperties => ({
   fontFamily: display, textTransform: "uppercase", fontWeight: 400, letterSpacing: "0.01em",
-  lineHeight: 0.95, color: lime, margin: 0, fontSize: size, overflowWrap: "break-word", minWidth: 0,
-});
+  lineHeight: 0.95, color: lime, margin: 0, fontSize: size, minWidth: 0,
+  // Whole words only: a word (with its dot) never splits across lines; balance avoids a lone short last line.
+  overflowWrap: "normal", wordBreak: "normal", hyphens: "none", textWrap: "balance",
+} as CSSProperties);
 const label: CSSProperties = { fontSize: 14, color: muted, display: "block", marginBottom: 6 };
 const input: CSSProperties = {
   width: "100%", boxSizing: "border-box", minHeight: 48, padding: "10px 12px", background: panel,
@@ -103,6 +105,17 @@ function Button({ children, onClick, primary, disabled, wide }: {
 
 function Cell({ children, ink, style }: { children: ReactNode; ink?: boolean; style?: CSSProperties }) {
   return <div style={{ border: rule, margin: "-3px 0 0 -3px", padding: 18, background: ink ? lime : black, color: ink ? black : limeSoft, minWidth: 0, ...style }}>{children}</div>;
+}
+
+// Tick (confirmed) or cross (not confirmed), inline SVG in the text colour.
+function StatusIcon({ ok }: { ok: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style={{ flex: "0 0 auto" }}>
+      <rect x="1.5" y="1.5" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="3" />
+      {ok ? <path d="M6 11.5l3.5 3.5L16 7.5" fill="none" stroke="currentColor" strokeWidth="3" />
+        : <path d="M7 7l8 8M15 7l-8 8" fill="none" stroke="currentColor" strokeWidth="3" />}
+    </svg>
+  );
 }
 
 // ─── Mascot: inline SVG line art (Flap Launcher UIs may not load images or use timers) ───
@@ -179,9 +192,11 @@ type Form = {
   name: string; symbol: string; meta: string; pool: string; buyTax: string; sellTax: string;
   payout: string; customPayout: string; milestones: Milestone[]; kols: string; invitees: string; slots: string;
 };
+// The first Kabal (the deal shown in the demo); its campaign has 50 first-come slots.
+const FEATURED_LAUNCHER = ""; // set to the first Kabal's launcher once it is created; empty = the button does nothing
 const initialForm: Form = {
   name: "", symbol: "", meta: "", pool: "1.1", buyTax: "5", sellTax: "5", payout: "nvda", customPayout: "",
-  milestones: [{ usd: "730", share: "10" }, { usd: "850", share: "20" }, { usd: "975", share: "30" }, { usd: "1100", share: "40" }],
+  milestones: [{ usd: "", share: "" }, { usd: "", share: "" }],
   kols: "", invitees: "", slots: "50",
 };
 
@@ -288,31 +303,32 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
   return (
     <section style={shell} aria-label={m.createTitle}>
       {/* Screen 1: the mascot, the promise, one action, and proof beside it */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "clamp(16px, 3vw, 40px)", padding: pad }}>
-        <Mascot size="clamp(180px, 30vw, 340px)" alt={m.mascotAlt} />
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "clamp(16px, 3cqi, 40px)", padding: pad }}>
+        <Mascot size="clamp(180px, 30cqi, 340px)" alt={m.mascotAlt} />
         <div style={{ flex: "1 1 320px", minWidth: 0, display: "grid", gap: 18 }}>
-          <h1 style={head("clamp(44px, 7vw, 92px)")}>{m.heroTitle}</h1>
+          <h1 style={head("clamp(44px, 7cqi, 92px)")}>{m.heroTitle}</h1>
           <p style={{ margin: 0, fontSize: 19, maxWidth: 560 }}>{m.heroLine}</p>
           <div><Button primary onClick={() => setOpen(true)}>{m.cta}</Button></div>
         </div>
-        <div style={{ flex: "1 1 240px", minWidth: 0, display: "grid" }}>
-          <Cell ink><p style={{ ...head("28px"), color: black }}>{m.proofTitle}</p></Cell>
-          <Cell><p style={{ margin: 0 }}><span style={{ ...head("40px"), ...nums }}>4/4</span> {m.proofMilestones}</p></Cell>
-          <Cell><p style={{ margin: 0 }}><span style={{ ...head("40px"), ...nums }}>$4.93</span> {m.proofKols}</p></Cell>
-          <Cell><p style={{ margin: 0, color: muted, fontSize: 14 }}>{m.proofNote}</p></Cell>
+        <div style={{ flex: "1 1 240px", minWidth: 0, display: "grid", gap: 12, background: magenta, color: black, border: rule, padding: 20 }}>
+          <p style={{ ...head("clamp(48px, 9cqi, 80px)"), color: black, ...nums }}>50</p>
+          <p style={{ ...head("28px"), color: black }}>{m.slotsTitle}</p>
+          <p style={{ margin: 0, fontSize: 16 }}>{m.slotsLine}</p>
+          <div><Button onClick={FEATURED_LAUNCHER ? () => host?.openLauncher?.(FEATURED_LAUNCHER) : undefined}>{m.slotsButton}</Button></div>
         </div>
       </div>
 
       {open && (
         <div style={{ borderTop: rule, padding: pad, display: "grid", gap: 28 }}>
-          <h2 style={head("clamp(32px, 4vw, 48px)")}>{m.formTitle}</h2>
+          <h2 style={head("clamp(32px, 4cqi, 48px)")}>{m.formTitle}</h2>
 
           <fieldset disabled={busy || !!created} style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 28, minWidth: 0 }}>
             <Group title={m.tokenSection}>
-              <Field label={m.name}><input style={input} value={form.name} maxLength={32} onChange={e => set({ name: e.target.value })} placeholder="KabalKult" /></Field>
-              <Field label={m.symbol}><input style={input} value={form.symbol} maxLength={12} onChange={e => set({ symbol: e.target.value.toUpperCase() })} placeholder="KKULT" /></Field>
-              <Field label={m.meta}><input style={input} value={form.meta} onChange={e => set({ meta: e.target.value })} placeholder="bafkrei…" /></Field>
-              <Field label={m.pool}><input style={{ ...input, ...nums }} inputMode="decimal" value={form.pool} onChange={e => set({ pool: e.target.value })} />
+              <Field label={m.name}><input style={input} value={form.name} maxLength={32} onChange={e => set({ name: e.target.value })} placeholder={m.exName} /></Field>
+              <Field label={m.symbol}><input style={input} value={form.symbol} maxLength={12} onChange={e => set({ symbol: e.target.value.toUpperCase() })} placeholder={m.exSymbol} /></Field>
+              <Field label={`${m.meta} ${m.metaLink}${m.metaEnd}`}>
+                <input style={input} value={form.meta} onChange={e => set({ meta: e.target.value })} /></Field>
+              <Field label={m.pool}><input style={{ ...input, ...nums }} inputMode="decimal" value={form.pool} placeholder={m.exPool} onChange={e => set({ pool: e.target.value })} />
                 <span style={{ display: "block", marginTop: 6, fontSize: 14, color: muted }}>{m.poolHint}</span></Field>
             </Group>
 
@@ -336,7 +352,7 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
                 })}
               </div>
               {form.payout === "custom" && (
-                <Field label={m.customTokenLabel}><input style={input} value={form.customPayout} onChange={e => set({ customPayout: e.target.value })} placeholder="0x…" /></Field>
+                <Field label={m.customTokenLabel}><input style={input} value={form.customPayout} onChange={e => set({ customPayout: e.target.value })} placeholder={m.exToken} /></Field>
               )}
               <p style={{ margin: 0, color: muted, fontSize: 14 }}>{m.payoutHint}</p>
             </div>
@@ -350,11 +366,11 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
                     <Cell ink style={{ padding: 8, display: "grid", placeItems: "center" }}><span style={{ ...head("28px"), color: black, ...nums }}>{i + 1}</span></Cell>
                     <Cell style={{ padding: 8 }}>
                       <label style={{ ...label, marginBottom: 2 }}>{m.milestoneUsd}
-                        <input style={{ ...input, border: 0, minHeight: 40, ...nums }} inputMode="decimal" value={x.usd} onChange={e => setMilestone(i, { usd: e.target.value })} /></label>
+                        <input style={{ ...input, border: 0, minHeight: 40, ...nums }} inputMode="decimal" value={x.usd} placeholder={m.exMilestoneUsd} onChange={e => setMilestone(i, { usd: e.target.value })} /></label>
                     </Cell>
                     <Cell style={{ padding: 8 }}>
                       <label style={{ ...label, marginBottom: 2 }}>{m.milestoneShare}
-                        <input style={{ ...input, border: 0, minHeight: 40, ...nums }} inputMode="decimal" value={x.share} onChange={e => setMilestone(i, { share: e.target.value })} /></label>
+                        <input style={{ ...input, border: 0, minHeight: 40, ...nums }} inputMode="decimal" value={x.share} placeholder={m.exMilestoneShare} onChange={e => setMilestone(i, { share: e.target.value })} /></label>
                     </Cell>
                     <Cell style={{ padding: 0 }}>
                       <button type="button" aria-label={m.removeMilestone} disabled={form.milestones.length === 1}
@@ -371,8 +387,8 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
             </div>
 
             <Group title={m.kolSection}>
-              <Field label={m.kols} wide><textarea style={{ ...input, minHeight: 96 }} value={form.kols} onChange={e => set({ kols: e.target.value })} placeholder="0x…, 0x…" /></Field>
-              <Field label={m.invitees} wide><textarea style={{ ...input, minHeight: 96 }} value={form.invitees} onChange={e => set({ invitees: e.target.value })} placeholder="0x…, 0x…" /></Field>
+              <Field label={m.kols} wide><textarea style={{ ...input, minHeight: 96 }} value={form.kols} onChange={e => set({ kols: e.target.value })} placeholder={m.exWallets} /></Field>
+              <Field label={m.invitees} wide><textarea style={{ ...input, minHeight: 96 }} value={form.invitees} onChange={e => set({ invitees: e.target.value })} placeholder={m.exWallets} /></Field>
               <Field label={m.slots}><input style={{ ...input, ...nums }} inputMode="numeric" value={form.slots} onChange={e => set({ slots: e.target.value })} /></Field>
               <p style={{ margin: 0, color: muted, fontSize: 14, gridColumn: "1 / -1" }}>{m.kolHint}</p>
             </Group>
@@ -466,18 +482,25 @@ export function Launcher({ context, messages: m, host }: DetailProps) {
     return <section style={{ ...shell, padding: pad }}><p style={{ margin: 0 }}>{m.loading}</p></section>;
   }
 
-  const role = isCreator ? m.roleCreator
-    : kolNumber > 0 ? `${m.roleKol} #${kolNumber}, ${s.confirmed ? m.confirmedBadge : m.notConfirmed}`
-    : s.invited ? m.roleInvited : account ? m.roleGuest : m.roleDisconnected;
+  // Wallet status box: short address + what this wallet is in the deal (KOLs: confirmed or not, with an icon).
+  const isKol = kolNumber > 0;
+  const status = !account ? m.roleDisconnected : isCreator ? m.roleCreator
+    : isKol ? (s.confirmed ? m.statusConfirmed : m.statusNotConfirmed) : s.invited ? m.roleInvited : m.roleGuest;
 
   return (
     <section style={shell} aria-label={m.detailTitle}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "clamp(16px, 3vw, 32px)", alignItems: "center", padding: pad, borderBottom: rule }}>
-        <Mascot size="clamp(120px, 16vw, 180px)" alt={m.mascotAlt} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "clamp(16px, 3cqi, 32px)", alignItems: "center", padding: pad, borderBottom: rule }}>
+        <Mascot size="clamp(120px, 16cqi, 180px)" alt={m.mascotAlt} />
         <div style={{ flex: "1 1 300px", minWidth: 0, display: "grid", gap: 10 }}>
-          <h1 style={head("clamp(36px, 5vw, 64px)")}>{s.launched ? m.liveTitle : m.preTitle}</h1>
+          <h1 style={head("clamp(36px, 5cqi, 64px)")}>{s.launched ? m.liveTitle : m.preTitle}</h1>
           <p style={{ margin: 0 }}>{s.launched ? m.liveLine : m.preLine}</p>
-          <p style={{ margin: 0, color: magenta, fontWeight: 700 }}>{role}</p>
+        </div>
+        <div style={{ flex: "0 0 auto", width: "clamp(180px, 24cqi, 240px)", minHeight: "clamp(120px, 16cqi, 180px)", border: rule,
+          display: "grid", alignContent: "center", gap: 10, padding: 16, boxSizing: "border-box", marginLeft: "auto" }}>
+          {account && <span style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 15, color: limeSoft }}>{account.slice(0, 5)}…{account.slice(-5)}</span>}
+          <span style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, color: isKol ? (s.confirmed ? lime : magenta) : limeSoft }}>
+            {isKol && account && <StatusIcon ok={!!s.confirmed} />}{status}
+          </span>
         </div>
       </div>
 

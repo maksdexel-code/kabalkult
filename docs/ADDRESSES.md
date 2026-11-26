@@ -100,6 +100,25 @@ v2 = v1 + on-chain campaign invites (no-argument `joinCampaign()`, works as a bu
 | Run 2 (after the last milestone): 20 more rounds of buys and sells | 5 more payouts of new tax to KOLs; one sell dipped market cap to $1,027 (below the last milestone), so that tax waited until it was back above | 8 payouts in total |
 | KOLs claim (anyone can trigger, funds go to the KOL) | each named KOL holds **0.2651 mNVDAb, earned $39.65** | [tx](https://testnet.bscscan.com/tx/0x76db6d373e46ebcdf0c994faa47f04a8fd099ebed7b0ac35615cc11214fbcdb6), [tx](https://testnet.bscscan.com/tx/0xf593393900fd6ddbe78227ad5f9d1a3304104d35f192a9b58073b7dfc03d651a) |
 | Vault totals | revenue 0.1433 tBNB, all of it paid out | |
+| KOL 1 "proof of shill": `confirmWithX` with a real X post, proof signed by Flap's oracle, checked by Flap's X Verifier (27 Nov) | KOL 1 shows Confirmed + X handle | [tx](https://testnet.bscscan.com/tx/0xf754e254ac22fbd7ca1c259d35ba38b92018997d9a4dd1e8ef376fb66dde7565) |
+
+### Launch v2 — KabalDemo (KKDEMO), the demo-video deal (Fri 27 Nov)
+
+Created, joined and launched on camera through the KabalKult Launcher UI (Flap template workbench, real MetaMask).
+
+| Item | Value |
+|---|---|
+| `Portal.newLauncher` | [tx](https://testnet.bscscan.com/tx/0x074d27d2a636ba9be46bf2f3c3d798bf7ea03f4623dc2b235b14453f6a1b20d5) |
+| KOL 1 `confirm()` · invitee 1 `joinCampaign()` | [tx](https://testnet.bscscan.com/tx/0xc9970fb0c08255073007c512de280d93eeebccfacd680021f37ff06382a1d7ff) · [tx](https://testnet.bscscan.com/tx/0x876c337529fe16d43c9453ce2c682db5e92f4b7571fe742917bb61be46f50856) |
+| `launcher.launch()` | [tx](https://testnet.bscscan.com/tx/0xca41a2dd9b9082918aeaf9e5dda321e875aceceafeb2ef248f21fdc6aa216c4c) |
+| Launcher | [`0x9e7891dc2695229fdcd96c7fa0470b7d3b703e32`](https://testnet.bscscan.com/address/0x9e7891dc2695229fdcd96c7fa0470b7d3b703e32) |
+| Token (KKDEMO) | [`0x3317586644edA1aD5ebA9617aEfc284021CB7777`](https://testnet.bscscan.com/address/0x3317586644edA1aD5ebA9617aEfc284021CB7777) |
+| Vault | [`0x2e163e1f367785580d46B4339EaD6A7B99D8Db2b`](https://testnet.bscscan.com/address/0x2e163e1f367785580d46B4339EaD6A7B99D8Db2b) |
+| Settings | 5%/5% tax · mTSLAb · milestones $750 / $1,002 / $1,200 / $1,350 paying 20/25/30/25% · 2 named KOLs · 2 invitees, 50 slots |
+| Trades (BUYER, KOL 1, KOL 2): 5 buys, 1 sell | market cap $611 → $1,095 | first: [tx](https://testnet.bscscan.com/tx/0x43e425da5497d14d03eb27c8e1e2a95bda14c53727fc6a7e6785b1f068d21753) |
+| Milestones 1 + 2 paid **by the relayer on its own**, ~90 s after the last trade | 45% of the vault → mTSLAb, split between 3 KOLs; milestones 3 and 4 stay locked | [tx](https://testnet.bscscan.com/tx/0x0ad9aca6a1bea6d2a458946ee77385bd73b7227a323c0a42497a35aed3deb9ef) |
+
+Also launched on 27 Nov through the same factory (not used in the video): KKULT [`0x8d2b56095f984896bfc520727747e97f2cedad58`](https://testnet.bscscan.com/address/0x8d2b56095f984896bfc520727747e97f2cedad58), vault `0x2E5c0985052c4a101e827A93E5269a142f7Ea68b`.
 
 ## Our contracts — v1 (first launch; full flow proven, superseded by v2)
 

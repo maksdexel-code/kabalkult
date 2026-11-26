@@ -14,7 +14,18 @@ One-page write-up (problem, data sources, contracts, next steps): [`docs/WRITEUP
 **Live on Flap (BSC Testnet; our Launcher Factory is linked to our UI by Flap):**
 [Create a deal](https://test.utter.cash/create/launcher?chain=bnb-testnet&factory=0xb3e793c1111900f3d47eee4d8c22c3c15cd0551f) (our Launcher UI, creation form) ·
 [KKULT deal page](https://test.utter.cash/launcher/0x1fcC67DCb185C273b2352267717412Cc899B9495?chain=bnb-testnet) (our Launcher UI, deal page) ·
-[KOL vault](https://test.utter.cash/bnb-testnet/0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777/taxinfo?artifactPath=vaultui_kabalkult-vault_01M8BFV3PK67GXSAC2XDG89C59%2Fv20261126092021041_kabalkult-vault_a9af6c4a27b7&lang=en) (our Vault UI: live market cap, milestones, claims).
+[KOL vault](https://test.utter.cash/bnb-testnet/0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777/taxinfo?artifactPath=vaultui_kabalkult-vault_01M8BFV3PK67GXSAC2XDG89C59%2Fv20261126092021041_kabalkult-vault_a9af6c4a27b7&lang=en) (our Vault UI: live market cap, milestones, claims) ·
+[KabalDemo deal page](https://test.utter.cash/launcher/0x9e7891dc2695229fdcd96c7fa0470b7d3b703e32?chain=bnb-testnet) (the deal from the demo video).
+
+**Proven on BSC Testnet** (every transaction in [`docs/ADDRESSES.md`](docs/ADDRESSES.md)):
+- **KKULT:** real trades took the market cap from $609 to $1,225; all 4 milestones paid in mNVDAb (1 + 2 in one payout,
+  4 by the relayer on its own); new tax kept paying after the last milestone; each named KOL claimed $39.65.
+- **Proof of shill:** a real X post naming the deal and the KOL's wallet, proven by Flap's X Verifier and recorded on
+  chain with `confirmWithX`; the vault page shows "Confirmed, posted on X as @handle".
+- **KabalDemo (demo video):** created, confirmed, joined and launched on camera; trades took it from $611 to $1,095 and
+  the relayer paid milestones 1 + 2 about 90 seconds later with nobody pressing a button; milestones 3 and 4 stay locked.
+- **Relayer** on Google Cloud (every 5 min, every KabalKult launch): CMC + Atlas prices on chain, waiting tax moved
+  into vaults, reached milestones paid. Request log: [`logs/relayer.jsonl`](logs/relayer.jsonl).
 
 ## How it works
 
@@ -88,6 +99,9 @@ cd contracts
 BSC_TESTNET_RPC_URL=https://bsc-testnet-dataseed.bnbchain.org forge test
 ```
 
+The tests fork the live chain, so a busy free RPC can make some fail with `EvmError: Revert`. Rerun, or use
+`https://bsc-testnet-rpc.publicnode.com`. All 24 pass.
+
 Campaign invites are stored on chain: pass them at creation (`invitees`) or add later with `addInvites` (creator only).
 
 ## Known limits
@@ -98,7 +112,7 @@ Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before a
   transaction) can reach a milestone. Fix: hold rule across two checks or a TWAP.
 - **DEX payouts have no minimum output.** Buying a non-stock payout token on the DEX uses `amountOutMin = 0`, so a
   sandwich trade can take value. Fix: oracle- or TWAP-based minimum. Mock-stock payouts use StockDesk at the oracle price.
-- **One price relayer.** One wallet pushes BNB/USD and stock prices (CoinMarketCap, cross-checked with Atlas). It could
+- **One price relayer.** The UI says prices are live from CMC and Atlas; it does not say that one wallet pushes them. One wallet pushes BNB/USD and stock prices (CoinMarketCap, cross-checked with Atlas). It could
   trigger milestones early or set the stock price; if it stops, payouts wait (prices older than 10 minutes are refused).
   Fix: read Atlas feeds on chain and require two sources to agree.
 - **Creator can add invitees at any time**, including their own wallets. Each new KOL shares later payouts. Fix: cap or
@@ -107,10 +121,10 @@ Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before a
 - **Tax runs 30 days** after launch (the Flap tax duration we set).
 - **BNB fallback.** If buying the payout token fails, that payout is booked in BNB; `claim()` pays the token and BNB
   together, so a token that blocks transfers also blocks the BNB part. Fix: separate claims.
-- **Upgradeable.** Launchers and vaults are beacon proxies; only the Flap Guardian can upgrade them.
+- **Upgradeable.** Launchers and vaults are beacon proxies; only the Flap Guardian can upgrade them (stated here, not in the UI).
 - **Named KOLs are paid with or without confirming.** Confirm is only a public badge.
-- **X proof on BSC Testnet works since 27 Nov.** Flap's testnet X Verifier briefly trusted an old oracle key; Flap
-  updated it after our report. A real post's proof now verifies, and only the KOL named in the post text can use it.
+- **Testnet X Verifier key (fixed).** On 27 Nov Flap's testnet X Verifier briefly trusted an old oracle key, so fresh
+  proofs failed; we reported it, Flap updated the key, and the proof above went through.
 - **No full public KOL roster yet.** The vault page has a "Check a wallet" box (KOL number, confirm badge, proven X
   handle and USD earned for any wallet). A full list needs the KOL list from the deal's launcher, which Flap's Vault UI
   rules don't allow reading (only the vault, token, factory or fixed declared contracts). Fix: a vault view that returns

@@ -57,13 +57,17 @@ Every `Payout` event stores the price source string, so each payout shows which 
 **Shown working on testnet (26 Nov):** real buys and sells moved KKULT from $609 to $1,225 market cap. All 4
 milestones paid in mNVDAb: milestones 1 + 2 in one payout, milestone 4 triggered automatically by the relayer
 after a CMC price push. New tax kept paying KOLs after the last milestone, and paused while a sell pushed the market
-cap below it. Each named KOL claimed 0.2651 mNVDAb, worth $39.65 at payout. All transactions are listed in
-`docs/ADDRESSES.md`.
+cap below it. Each named KOL claimed 0.2651 mNVDAb, worth $39.65 at payout.
+
+**Shown again on camera (27 Nov, KabalDemo, paid in mock Tesla):** trades took the market cap from $611 to $1,095
+and the relayer, on its own, priced the deal with CMC + Atlas and paid milestones 1 + 2 about 90 seconds later;
+milestones 3 and 4 stayed locked. A KOL's X post was proven on chain through Flap's X Verifier ("proof of shill").
+All transactions are listed in `docs/ADDRESSES.md`.
 
 **Verify it yourself:** on BscScan, read `PriceRelay.source()`, `bnbUsd()`, `stockUsd("NVDA")`, `stockUsd("NVDAB")`
 and `updatedAt()`, or browse its `PricesUpdated` events; compare with the Atlas feeds' `latestRoundData()`. Read
 `marketCapUsd()` and the `Payout` events on the vault. The relayer's request log (`logs/relayer.jsonl`: time,
-endpoint, credits, Atlas readings, tx hash; no key) is available on request.
+endpoint, credits, Atlas readings, tx hash; no key) is published in the repo.
 
 ## Safety
 
