@@ -63,6 +63,8 @@ Do **not** confuse with the bonding-curve Portal `0x5bEacaF7ABCbB3aB280e80D007FD
 
 ## Our contracts — v2 (current, deployed Thu 26 Nov 2026 15:25, BSC Testnet)
 
+**Source verified on BscScan** (26 Nov, `tools/verify-bscscan.sh`): all contracts below plus both beacons (`0x119Fc4570b78E7ddc6D43d303B64593Dc09227d4`, `0x6c61D923410a40c5B605715aFa32b68BF84809f2`). Launchers and vaults are beacon proxies of the verified implementations.
+
 v2 = v1 + on-chain campaign invites (no-argument `joinCampaign()`, works as a button on Flap's launch page) + vault dashboard views for Flap's Vault UI.
 
 | Contract | Address | Deploy |

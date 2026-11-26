@@ -69,7 +69,8 @@ Atlas reading is also logged by the relayer to `logs/relayer.jsonl` (no key in t
 | `StockDesk` / `MockStock` | Testnet stand-in for buying a real bStock (mNVDAb, mTSLAb, mAAPLb) at the oracle price. |
 
 `contracts/src/flap/` is copied unchanged from [FlapPoolLaunchVaultExample](https://github.com/flap-sh/FlapPoolLaunchVaultExample).
-Deployed addresses and transactions: [`docs/ADDRESSES.md`](docs/ADDRESSES.md).
+Deployed addresses and transactions: [`docs/ADDRESSES.md`](docs/ADDRESSES.md). All v2 contracts are source-verified on BscScan,
+e.g. [KabalKultLauncherFactory](https://testnet.bscscan.com/address/0xb3E793C1111900F3d47EEe4D8c22c3C15cD0551F#code).
 
 ## Build and test
 
