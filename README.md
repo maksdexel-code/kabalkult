@@ -111,7 +111,9 @@ Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before a
 - **Named KOLs are paid with or without confirming.** Confirm is only a public badge.
 - **Vault UI on flap.sh is one version behind this repo.** `app/vault` adds a public KOL roster (every KOL, their
   confirm badge and proven X handle); the preview Flap published on 26 Nov predates it and shows only the connected
-  wallet's own status. The new version passes `yarn vault:check` and is waiting to be re-submitted to Flap.
+  wallet's own status. The roster reads the KOL list from the deal's launcher, which Flap's current packaging rules
+  don't allow for a Vault UI (only the vault, token, factory or fixed declared contracts). Fix: a vault view that returns
+  the KOL list (needs a vault upgrade by the Flap Guardian), or a reviewed exception from Flap.
 
 ## How this was built
 
