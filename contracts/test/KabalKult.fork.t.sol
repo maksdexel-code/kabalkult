@@ -69,7 +69,7 @@ contract KabalKultForkTest is ForkBase {
         c.namedKols = new address[](2);
         c.namedKols[0] = kolA;
         c.namedKols[1] = kolB;
-        c.campaignRoot = _root(_leaves());
+        c.invitees = _guests(64);
         c.campaignSlots = 50;
         c.milestoneUsd = new uint256[](2);
         (c.milestoneUsd[0], c.milestoneUsd[1]) = (M1, M2);
@@ -108,49 +108,20 @@ contract KabalKultForkTest is ForkBase {
         assertGt(address(v).balance, 0, "tax reached the vault");
     }
 
-    // ─── Merkle helpers (OZ StandardMerkleTree leaf, sorted-pair hashing) ────
+    // ─── campaign helpers ────────────────────────────────────────────────────
 
     function _guest(uint256 i) internal pure returns (address) {
         return address(uint160(0xC0DE2000 + i));
     }
 
-    function _leaf(address a) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(a))));
-    }
-
-    function _leaves() internal pure returns (bytes32[] memory l) {
-        l = new bytes32[](64);
-        for (uint256 i; i < 64; ++i) {
-            l[i] = _leaf(_guest(i));
-        }
-    }
-
-    function _up(bytes32[] memory layer) internal pure returns (bytes32[] memory next) {
-        next = new bytes32[](layer.length / 2);
-        for (uint256 i; i < next.length; ++i) {
-            (bytes32 a, bytes32 b) = (layer[2 * i], layer[2 * i + 1]);
-            next[i] = a < b ? keccak256(abi.encode(a, b)) : keccak256(abi.encode(b, a));
-        }
-    }
-
-    function _root(bytes32[] memory layer) internal pure returns (bytes32) {
-        while (layer.length > 1) layer = _up(layer);
-        return layer[0];
-    }
-
-    function _proof(uint256 idx) internal pure returns (bytes32[] memory p) {
-        bytes32[] memory layer = _leaves();
-        p = new bytes32[](6);
-        for (uint256 k; layer.length > 1; ++k) {
-            p[k] = layer[idx ^ 1];
-            layer = _up(layer);
-            idx /= 2;
-        }
+    function _guests(uint256 n) internal pure returns (address[] memory g) {
+        g = new address[](n);
+        for (uint256 i; i < n; ++i) g[i] = _guest(i);
     }
 
     function _join(KabalKultLauncher l, uint256 i) internal {
         vm.prank(_guest(i));
-        l.joinCampaign(_proof(i));
+        l.joinCampaign();
     }
 
     function _claimAll(KabalKultLauncher l, KabalKultVault v) internal {
@@ -177,6 +148,7 @@ contract KabalKultForkTest is ForkBase {
         assertEq(uint16(uint160(l.token())), 0x7777, "vanity token address");
         assertApproxEqRel(v.marketCapUsd(), LAUNCH_MC, 0.01e18, "launch MC = poolQuote x BNB/USD");
         _assertContains(v.description(), "Milestones paid: 0/2", "vault description");
+        assertEq(l.vault(), address(v), "launcher knows its vault");
 
         vm.prank(creator);
         vm.expectRevert(KabalKultLauncher.AlreadyLaunched.selector);
@@ -383,10 +355,8 @@ contract KabalKultForkTest is ForkBase {
 
         vm.prank(alice); // not invited
         vm.expectRevert(KabalKultLauncher.NotInvited.selector);
-        l.joinCampaign(_proof(0));
-        vm.prank(_guest(0)); // invited, but someone else's proof
-        vm.expectRevert(KabalKultLauncher.NotInvited.selector);
-        l.joinCampaign(_proof(1));
+        l.joinCampaign();
+        assertEq(l.inviteCount(), 64);
 
         for (uint256 i; i < 25; ++i) _join(l, i); // before launch
         KabalKultVault v = _launch(l);
@@ -394,10 +364,10 @@ contract KabalKultForkTest is ForkBase {
 
         vm.prank(_guest(50));
         vm.expectRevert(KabalKultLauncher.CampaignFull.selector);
-        l.joinCampaign(_proof(50));
+        l.joinCampaign();
         vm.prank(_guest(0));
         vm.expectRevert(KabalKultLauncher.AlreadyKol.selector);
-        l.joinCampaign(_proof(0));
+        l.joinCampaign();
         assertEq(l.campaignSlotsTaken(), 50);
         assertEq(l.kolCount(), 52);
         assertTrue(l.confirmed(_guest(49)));
@@ -422,7 +392,7 @@ contract KabalKultForkTest is ForkBase {
         _join(l, 1);
         vm.prank(_guest(2));
         vm.expectRevert(KabalKultLauncher.CampaignFull.selector);
-        l.joinCampaign(_proof(2));
+        l.joinCampaign();
     }
 
     function test_namedKolConfirmBadge() public {
@@ -588,5 +558,70 @@ contract KabalKultForkTest is ForkBase {
         vm.prank(creator);
         vm.expectRevert(sel);
         portal.newLauncher{value: fee}(address(lf), abi.encode(c));
+    }
+
+    // ─── v2: invites, dashboard views ────────────────────────────────────────
+
+    function test_creatorAddsInvites() public {
+        _deploy();
+        KabalKultLauncher l = _newKK("invites");
+        address[] memory more = new address[](2);
+        (more[0], more[1]) = (alice, _guest(0)); // _guest(0) already invited: counted once
+        vm.prank(alice);
+        vm.expectRevert(KabalKultLauncher.NotCreator.selector);
+        l.addInvites(more);
+        vm.prank(creator);
+        l.addInvites(more);
+        assertEq(l.inviteCount(), 65);
+        vm.prank(alice);
+        l.joinCampaign();
+        assertTrue(l.isKol(alice));
+    }
+
+    function test_vaultDashboardViews() public {
+        _deploy();
+        (KabalKultLauncher l, KabalKultVault v) = _launchAndEarn("views");
+        _join(l, 3);
+        vm.prank(kolA);
+        l.confirm();
+
+        {
+            (uint256[] memory usd, uint16[] memory share) = v.milestones();
+            assertEq(usd.length, 2);
+            assertEq(usd[1], M2);
+            assertEq(share[0], 5000);
+            assertEq(v.payoutToken(), address(stock));
+            assertEq(v.kolCount(), 3);
+        }
+        {
+            (uint256 n, bool conf, bool inv, string memory x) = v.kolStatus(_guest(3));
+            assertEq(n, 3);
+            assertTrue(conf && inv);
+            assertEq(bytes(x).length, 0);
+            (n, conf, inv,) = v.kolStatus(kolA);
+            assertEq(n, 1);
+            assertTrue(conf);
+            assertFalse(inv);
+        }
+        {
+            (address cr, uint16 buy, uint16 sell, uint32 slots, uint256 taken) = v.deal();
+            assertEq(cr, creator);
+            assertEq(buy + sell, 1000);
+            assertEq(slots, 50);
+            assertEq(taken, 1);
+        }
+        {
+            (uint256 bnbUsd, uint256 payoutUsd, uint256 at, bool fresh, string memory src) = v.prices();
+            assertEq(bnbUsd, BNB_USD);
+            assertEq(payoutUsd, NVDA_USD, "mNVDAb priced from the relay");
+            assertEq(at, relay.updatedAt());
+            assertTrue(fresh);
+            assertEq(src, "test");
+            assertEq(v.marketCapUsdLast(), v.marketCapUsd());
+        }
+        vm.warp(block.timestamp + relay.MAX_AGE() + 1);
+        (,,, bool stillFresh,) = v.prices();
+        assertFalse(stillFresh, "stale shows as stale, does not revert");
+        v.marketCapUsdLast();
     }
 }

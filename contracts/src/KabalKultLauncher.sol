@@ -3,7 +3,6 @@ pragma solidity ^0.8.26;
 
 import {IPortalTypes, IPortal} from "src/flap/IPortal.sol";
 import {Initializable} from "@openzeppelin-contracts-upgradeable/proxy/utils/Initializable.sol";
-import {MerkleProof} from "@openzeppelin/utils/cryptography/MerkleProof.sol";
 import {LauncherBase} from "src/flap/LauncherBase.sol";
 import {Distribution} from "src/flap/Distribution.sol";
 import {LaunchExtensionHelper} from "src/flap/LaunchExtensionHelper.sol";
@@ -35,7 +34,7 @@ string constant KK_SUMMARY_ZH =
 /// @param salt          Launch salt, mined so the token address ends in `0x7777`.
 /// @param poolQuote     BNB the creator seeds into the pool at `launch()` (the whole supply goes in the pool).
 /// @param namedKols     KOLs set by the creator. Always paid; `confirm()` / `confirmWithX()` only add a badge.
-/// @param campaignRoot  Merkle root of invited creators (OZ StandardMerkleTree, leaf = address). 0 = no campaign.
+/// @param invitees      Wallets invited to the campaign (stored on chain; the creator can add more later).
 /// @param campaignSlots How many invited creators can join (first come, first served), 0..99,999.
 /// @param milestoneUsd  1..10 market-cap targets, USD with 18 decimals, strictly rising.
 /// @param milestoneShareBps Planned share of the payouts per milestone, in bps; each > 0, sum 10,000.
@@ -49,7 +48,7 @@ struct KabalKultConfig {
     bytes32 salt;
     uint256 poolQuote;
     address[] namedKols;
-    bytes32 campaignRoot;
+    address[] invitees;
     uint32 campaignSlots;
     uint256[] milestoneUsd;
     uint16[] milestoneShareBps;
@@ -61,8 +60,8 @@ struct KabalKultConfig {
 /// @title KabalKultLauncher
 /// @notice Holds the deal between a meme creator and its KOLs, before and after the DEX launch:
 ///         - named KOLs (set at creation, always paid, optional `confirm()` badge);
-///         - a campaign: invited wallets (Merkle allowlist) take one of `campaignSlots` slots with
-///           `joinCampaign`, open before and after the launch until full;
+///         - a campaign: invited wallets take one of `campaignSlots` slots with `joinCampaign()`, open before
+///           and after the launch until full (no-argument actions, so they work as buttons on Flap's launch page);
 ///         - "proof of shill": any KOL can confirm with an X post, checked on chain by Flap's X Verifier;
 ///         - 1..10 USD market-cap milestones with payout shares, read by the paired `KabalKultVault`.
 ///         The creator launches whenever they want; the launch never waits for confirms.
@@ -76,7 +75,6 @@ contract KabalKultLauncher is LauncherBase, Initializable {
     address public vaultFactory;
     bytes32 public launchSalt;
     uint256 public poolQuote;
-    bytes32 public campaignRoot;
     uint32 public campaignSlots;
     uint256[] public milestoneUsd;
     uint16[] public milestoneShareBps;
@@ -90,6 +88,8 @@ contract KabalKultLauncher is LauncherBase, Initializable {
     /// @dev Named KOLs first, then campaign slot holders in join order.
     address[] internal kols;
     uint256 public campaignSlotsTaken;
+    mapping(address => bool) public invited;
+    uint256 public inviteCount;
     /// @notice Position in the KOL list + 1 (0 = not a KOL). The vault uses it to know which payouts a KOL shares.
     mapping(address => uint256) public kolNumber;
     mapping(address => bool) public confirmed;
@@ -101,9 +101,12 @@ contract KabalKultLauncher is LauncherBase, Initializable {
     bool public launching;
     address public token;
     address public pool;
+    /// @notice The vault Flap created at launch (pays the KOLs).
+    address public vault;
 
     event KolConfirmed(address indexed kol, bool campaignSlot);
     event KolPostedOnX(address indexed kol, string xHandle, uint128 tweetId);
+    event Invited(uint256 count);
     event Launched(address indexed token, address indexed pool);
 
     error InvalidConfig();
@@ -131,7 +134,7 @@ contract KabalKultLauncher is LauncherBase, Initializable {
         vaultFactory = vaultFactory_;
         launchSalt = c.salt;
         poolQuote = c.poolQuote;
-        campaignRoot = c.campaignRoot;
+        _invite(c.invitees);
         campaignSlots = c.campaignSlots;
         milestoneUsd = c.milestoneUsd;
         milestoneShareBps = c.milestoneShareBps;
@@ -172,16 +175,31 @@ contract KabalKultLauncher is LauncherBase, Initializable {
     }
 
     /// @notice An invited creator takes a campaign slot. First come, first served, until all slots are taken.
-    function joinCampaign(bytes32[] calldata proof) external {
+    function joinCampaign() external {
         if (kolNumber[msg.sender] != 0) revert AlreadyKol();
         if (campaignSlotsTaken >= campaignSlots) revert CampaignFull();
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender))));
-        if (!MerkleProof.verifyCalldata(proof, campaignRoot, leaf)) revert NotInvited();
+        if (!invited[msg.sender]) revert NotInvited();
         ++campaignSlotsTaken;
         confirmed[msg.sender] = true;
         kols.push(msg.sender);
         kolNumber[msg.sender] = kols.length;
         emit KolConfirmed(msg.sender, true);
+    }
+
+    /// @notice The creator invites more wallets (before or after launch).
+    function addInvites(address[] calldata wallets) external {
+        if (msg.sender != creator) revert NotCreator();
+        _invite(wallets);
+    }
+
+    function _invite(address[] memory wallets) private {
+        for (uint256 i; i < wallets.length; ++i) {
+            if (!invited[wallets[i]]) {
+                invited[wallets[i]] = true;
+                ++inviteCount;
+            }
+        }
+        emit Invited(inviteCount);
     }
 
     /// @notice The text a KOL must post on X: it names this deal and the KOL's wallet, so a post can't be reused.
@@ -241,6 +259,7 @@ contract KabalKultLauncher is LauncherBase, Initializable {
         launched = true;
         token = token_;
         pool = pool_;
+        (vault,) = IPortal(_getHub()).getLaunchVault(token_);
         emit Launched(token_, pool_);
     }
 

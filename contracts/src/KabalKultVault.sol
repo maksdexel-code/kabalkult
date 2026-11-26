@@ -19,6 +19,15 @@ interface IKabalKultLauncher {
     function kolCount() external view returns (uint256);
     function kolNumber(address kol) external view returns (uint256);
     function payoutToken() external view returns (address);
+    function milestones() external view returns (uint256[] memory usd, uint16[] memory shareBps);
+    function confirmed(address kol) external view returns (bool);
+    function invited(address kol) external view returns (bool);
+    function xHandle(address kol) external view returns (string memory);
+    function creator() external view returns (address);
+    function buyTaxBps() external view returns (uint16);
+    function sellTaxBps() external view returns (uint16);
+    function campaignSlots() external view returns (uint32);
+    function campaignSlotsTaken() external view returns (uint256);
 }
 
 interface IV2PairLike {
@@ -110,7 +119,7 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
     receive() external payable {}
 
     function version() external pure returns (string memory) {
-        return "v2.0.0";
+        return "v2.1.0";
     }
 
     /// @notice Every BNB the vault ever received (payouts and claims move BNB around, never count it twice).
@@ -137,6 +146,65 @@ contract KabalKultVault is DirectLaunchVaultBase, Initializable, ReentrancyGuard
         (uint256 r0, uint256 r1,) = pair.getReserves();
         (uint256 rToken, uint256 rBnb) = pair.token0() == token ? (r0, r1) : (r1, r0);
         return rBnb * IERC20(token).totalSupply() / rToken * bnbUsd / 1e18;
+    }
+
+    // ─── Dashboard views (Flap's Vault UI may only read the vault itself) ─────
+
+    /// @notice Market cap at the last relayed BNB price, without the freshness check (display only).
+    function marketCapUsdLast() external view returns (uint256) {
+        return _marketCapUsd(relay.bnbUsd());
+    }
+
+    function milestones() external view returns (uint256[] memory usd, uint16[] memory shareBps) {
+        return launcher.milestones();
+    }
+
+    /// @notice address(0) = BNB.
+    function payoutToken() external view returns (address) {
+        return launcher.payoutToken();
+    }
+
+    function kolCount() external view returns (uint256) {
+        return launcher.kolCount();
+    }
+
+    /// @notice A wallet's place in the deal: KOL number (0 = not a KOL), confirm badge, invited, proved X handle.
+    function kolStatus(address kol)
+        external
+        view
+        returns (uint256 number, bool confirmed, bool invited, string memory xHandle)
+    {
+        return (launcher.kolNumber(kol), launcher.confirmed(kol), launcher.invited(kol), launcher.xHandle(kol));
+    }
+
+    /// @notice The deal's settings as the creator set them.
+    function deal()
+        external
+        view
+        returns (address creator, uint16 buyTaxBps, uint16 sellTaxBps, uint32 campaignSlots, uint256 campaignSlotsTaken)
+    {
+        return (
+            launcher.creator(),
+            launcher.buyTaxBps(),
+            launcher.sellTaxBps(),
+            launcher.campaignSlots(),
+            launcher.campaignSlotsTaken()
+        );
+    }
+
+    /// @notice Last relayed prices (USD, 18 decimals): BNB, and the payout token (0 if it has no oracle price).
+    function prices()
+        external
+        view
+        returns (uint256 bnbUsd, uint256 payoutUsd, uint256 updatedAt, bool fresh, string memory source)
+    {
+        address t = launcher.payoutToken();
+        bnbUsd = relay.bnbUsd();
+        updatedAt = relay.updatedAt();
+        fresh = block.timestamp - updatedAt <= relay.MAX_AGE();
+        source = relay.source();
+        if (t == address(0)) payoutUsd = bnbUsd;
+        else if (desk.isStock(t)) payoutUsd = relay.stockUsd(desk.ticker(t));
     }
 
     /// @notice Pay every milestone the market cap has reached (or, after the last one, the new tax). Anyone can call.

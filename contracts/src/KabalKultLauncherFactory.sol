@@ -18,6 +18,8 @@ contract KabalKultLauncherFactory is LauncherFactoryBase {
 
     uint256 public constant MAX_NAMED_KOLS = 100;
     uint256 public constant MAX_CAMPAIGN_SLOTS = 99_999;
+    /// @dev ~22k gas each; 1,000 keeps creation far under the block gas limit. More via `addInvites`.
+    uint256 public constant MAX_INVITES = 1000;
     uint256 public constant MAX_MILESTONES = 10;
 
     error InvalidData();
@@ -47,8 +49,8 @@ contract KabalKultLauncherFactory is LauncherFactoryBase {
         }
         _checkMilestones(c.milestoneUsd, c.milestoneShareBps);
         // Somebody must be able to get paid, or the vault's BNB would never move.
-        bool campaign = c.campaignRoot != bytes32(0) && c.campaignSlots > 0;
-        if (c.namedKols.length > MAX_NAMED_KOLS || c.campaignSlots > MAX_CAMPAIGN_SLOTS || (c.namedKols.length == 0 && !campaign)) {
+        bool campaign = c.invitees.length > 0 && c.campaignSlots > 0;
+        if (c.namedKols.length > MAX_NAMED_KOLS || c.campaignSlots > MAX_CAMPAIGN_SLOTS || c.invitees.length > MAX_INVITES || (c.namedKols.length == 0 && !campaign)) {
             revert InvalidKols();
         }
         // Flap's rule (same as its launch template): each side 0-10%, the higher side at least 1%.
@@ -88,7 +90,7 @@ contract KabalKultLauncherFactory is LauncherFactoryBase {
         f[3] = FieldDescriptor("salt", "bytes32", "Vanity-mined launch salt (token ends in 7777)", 0);
         f[4] = FieldDescriptor("poolQuote", "uint256", "BNB seeded into the pool at launch", 18);
         f[5] = FieldDescriptor("namedKols", "address[]", "Named KOL wallets (max 100), always paid", 0);
-        f[6] = FieldDescriptor("campaignRoot", "bytes32", "Merkle root of invited creators (0 = none)", 0);
+        f[6] = FieldDescriptor("invitees", "address[]", "Wallets invited to the campaign (max 1000 here; more later)", 0);
         f[7] = FieldDescriptor("campaignSlots", "uint32", "Campaign slots, first come first served (0-99999)", 0);
         f[8] = FieldDescriptor("milestoneUsd", "uint256[]", "1-10 market-cap targets in USD, rising", 18);
         f[9] = FieldDescriptor("milestoneShareBps", "uint16[]", "Payout share per milestone in bps, sum 10000", 0);

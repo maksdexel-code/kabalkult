@@ -12,14 +12,14 @@ The KOL never holds a meme bag to dump.
 ## How it works
 
 1. **Create** — the creator calls Flap's `Portal.newLauncher(KabalKultLauncherFactory, config)`. The config holds
-   named KOLs, an optional campaign (Merkle allowlist of invited creators, 0–99,999 first-come slots), 1–10 USD
+   named KOLs, an optional campaign (invited wallets stored on chain, 0–99,999 first-come slots), 1–10 USD
    market-cap milestones each with its share of the payouts, and the creator's options:
    - **buy and sell tax**, each 0–10% (the higher side at least 1%, Flap's rule);
    - **payout token**: a mock stock from `StockDesk`, any token with a BNB pool on the testnet DEX, or BNB;
 
 2. **KOLs join** — named KOLs are always paid; `confirm()` adds a public ✅ badge, and `confirmWithX()` proves an
    X post naming the deal ("proof of shill", checked on chain by Flap's X Verifier). Invited creators take a slot with
-   `joinCampaign(proof)`, before or after the launch, until all slots are taken.
+   `joinCampaign()`, before or after the launch, until all slots are taken.
 3. **Launch** — the creator calls `launch()` with the pool BNB. Flap creates the token, its DEX pool and our vault in
    one transaction (LP burned). The tax slot is 100% `KabalKultVault`.
 4. **Tax** — collected in meme tokens, converted to BNB in a batch during a sell, then anyone calls the token's tax
@@ -56,7 +56,7 @@ cd contracts
 BSC_TESTNET_RPC_URL=https://bsc-testnet-dataseed.bnbchain.org forge test
 ```
 
-Campaign allowlist (invite list → Merkle root + proofs): `cd scripts/campaign && npm i && node merkle.mjs invited.json tree.json`.
+Campaign invites are stored on chain: pass them at creation (`invitees`) or add later with `addInvites` (creator only).
 
 ## Known limits
 

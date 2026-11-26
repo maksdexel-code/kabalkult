@@ -58,7 +58,35 @@ Do **not** confuse with the bonding-curve Portal `0x5bEacaF7ABCbB3aB280e80D007FD
 | Metadata JSON (`meta` at launch) | `bafkreig3ywcd6pccsoae3gqsxrncx3sqh74klsjxqb6wyqn7b7bauctodm` |
 | Logo | `bafkreianrrn7l4jsz2pslmk3sqfeqrm5ld6v3iuwcorzvhmoc3voztvlie` |
 
-## Our contracts (deployed Thu 26 Nov 2026, BSC Testnet)
+## Our contracts — v2 (current, deployed Thu 26 Nov 2026 15:25, BSC Testnet)
+
+v2 = v1 + on-chain campaign invites (no-argument `joinCampaign()`, works as a button on Flap's launch page) + vault dashboard views for Flap's Vault UI.
+
+| Contract | Address | Deploy |
+|---|---|---|
+| KabalKultLauncherFactory | [`0xb3E793C1111900F3d47EEe4D8c22c3C15cD0551F`](https://testnet.bscscan.com/address/0xb3E793C1111900F3d47EEe4D8c22c3C15cD0551F) | [tx](https://testnet.bscscan.com/tx/0x66fd82d86d00e61ae10ef0ead79b56a6f73dd7623fc63b42adc972c3008d9b72) |
+| KabalKultVaultFactory | [`0xA062092f6a12974b2024EF6B820Bc8250780779C`](https://testnet.bscscan.com/address/0xA062092f6a12974b2024EF6B820Bc8250780779C) | same tx |
+| KabalKultLauncher implementation | [`0xae9ff6e42a407c4566344156d8986c3a0489d27b`](https://testnet.bscscan.com/address/0xae9ff6e42a407c4566344156d8986c3a0489d27b) | [tx](https://testnet.bscscan.com/tx/0x7cc1877177afa2a5912248c535536410e6fba0927c328eba34754768125716e5) |
+| KabalKultVault implementation | [`0xc56431b201576a81943f4d390c2ef8fb7971b0da`](https://testnet.bscscan.com/address/0xc56431b201576a81943f4d390c2ef8fb7971b0da) | [tx](https://testnet.bscscan.com/tx/0xe30d117057361740f6cbe17b3d0520f208f54ea5eb9e95eaa13ec0194a9ee42d) |
+| PriceRelay | [`0x5C3A664e4257b280f6d3fA0c599E310068919478`](https://testnet.bscscan.com/address/0x5C3A664e4257b280f6d3fA0c599E310068919478) | [tx](https://testnet.bscscan.com/tx/0x2f1263d70d7b198a6012ee317a450c51c16acd159766421cedec9befd528851f) |
+| StockDesk | [`0x71A2399272121489993f3BafA18400BB0966E0A4`](https://testnet.bscscan.com/address/0x71A2399272121489993f3BafA18400BB0966E0A4) | [tx](https://testnet.bscscan.com/tx/0x32dff7519d40208c992b0e35a20b184df064c0c87ffde2feb2d812ceb53a219d) |
+| mNVDAb / mTSLAb / mAAPLb | [`0x687809daD911091f8FdEEf50E392734674CA7AaA`](https://testnet.bscscan.com/address/0x687809daD911091f8FdEEf50E392734674CA7AaA) / [`0x14c502a6920A81A58C14CC554C810Af1389eFa57`](https://testnet.bscscan.com/address/0x14c502a6920A81A58C14CC554C810Af1389eFa57) / [`0x90A95459ED7CaeEa5f1FB427Cf5502B4651E9B38`](https://testnet.bscscan.com/address/0x90A95459ED7CaeEa5f1FB427Cf5502B4651E9B38) | StockDesk tx |
+
+### Launch v2 — KabalKult (KKULT)
+
+| Item | Value |
+|---|---|
+| `Portal.newLauncher` | [tx](https://testnet.bscscan.com/tx/0xd7ac1c08921ee7edf6b91c18ff9b36b1250a19980435aa893fa943b7847b60fa) |
+| `launcher.launch()` | [tx](https://testnet.bscscan.com/tx/0x1da9a9b0583d6d0165b6a9d4decbdc356c21ce9c7bb69d88a132929bd58c0183) |
+| Launcher | [`0x1fcC67DCb185C273b2352267717412Cc899B9495`](https://testnet.bscscan.com/address/0x1fcC67DCb185C273b2352267717412Cc899B9495) |
+| Token (KKULT) | [`0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777`](https://testnet.bscscan.com/address/0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777) |
+| Pool | [`0xc165Ab54e4d618628c7d37b4069b14285EaeD9E7`](https://testnet.bscscan.com/address/0xc165Ab54e4d618628c7d37b4069b14285EaeD9E7) |
+| Vault | [`0x06f8efB571951D0169e10cd626eB4c5Db9BB954a`](https://testnet.bscscan.com/address/0x06f8efB571951D0169e10cd626eB4c5Db9BB954a) |
+| Settings | 5%/5% tax · mNVDAb · milestones $731 / $853 / $975 / $1,097 paying 10/20/30/40% · 2 named KOLs · 2 invitees, 50 slots |
+
+## Our contracts — v1 (first launch; full flow proven, superseded by v2)
+
+### v1 contracts
 
 | Contract | Address | Deploy |
 |---|---|---|

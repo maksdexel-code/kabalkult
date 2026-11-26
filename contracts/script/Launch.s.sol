@@ -32,7 +32,7 @@ contract Launch is Script {
         c.salt = _mineSalt(keccak256(abi.encode(c.name, c.symbol, block.timestamp)), address(portal));
         c.poolQuote = vm.envOr("KK_POOL_QUOTE", uint256(1.1 ether));
         c.namedKols = vm.envAddress("KK_NAMED_KOLS", ",");
-        c.campaignRoot = vm.envOr("KK_CAMPAIGN_ROOT", bytes32(0));
+        c.invitees = vm.envOr("KK_INVITEES", ",", new address[](0));
         c.campaignSlots = uint32(vm.envOr("KK_CAMPAIGN_SLOTS", uint256(50)));
         uint256 launchMc = c.poolQuote * bnbUsd / 1e18;
         uint256[] memory x10 = vm.envOr("KK_MILESTONES_X10", ",", _pair(13, 18)); // 13 = 1.3x launch MC
