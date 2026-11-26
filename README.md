@@ -1,4 +1,4 @@
-# KabalKult — KOLs paid in stock, only if the meme performs
+# KabalKult — KOLs paid in anything, only if the meme performs
 
 > **Testnet only (BSC Testnet, chain 97). Unaudited. Mock assets (mNVDAb, mTSLAb, mAAPLb are not real stocks).**
 

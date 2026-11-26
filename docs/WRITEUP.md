@@ -1,4 +1,4 @@
-# KabalKult — KOLs paid in stock, only if the meme performs
+# KabalKult — KOLs paid in anything, only if the meme performs
 
 **CoinMarketCap × Atlas Challenge — one-page write-up** · BNB Chain (BSC Testnet, chain 97) · Flap Pool Launch
 Testnet only · mock stocks (mNVDAb, mTSLAb, mAAPLb), not real shares · unaudited
@@ -14,20 +14,21 @@ off-chain market built on trust and screenshots.
 
 A launcher on Flap's Pool Launch where **the token launch is the KOL deal.** Before the token exists, the creator
 sets the KOL wallets (plus an open campaign of up to 99,999 first-come slots) and 1–10 USD market-cap milestones.
-100% of the buy/sell tax goes into a vault. When the market cap passes a milestone, the vault buys a **tokenized
-stock** (mock NVIDIA on testnet) and splits it equally between the KOLs, who claim it whenever they want. The KOL
-never holds a meme bag to dump, and is paid only if the meme performs.
+100% of the buy/sell tax goes into a vault. When the market cap passes a milestone, the vault buys **whatever the
+creator chose to pay in**: a tokenized stock (mock NVIDIA, Tesla or Apple on testnet, priced by CMC), any token with a
+BNB pool, or plain BNB. It splits the payout equally between the KOLs, who claim it whenever they want. The KOL is
+paid in anything but the meme, so there is no bag to dump, and only if the meme performs.
 
 ## Data sources: what we use and why
 
 Prices drive the core of the product. They decide **when** a KOL is paid (USD market cap vs milestone), **how much
-stock** the payout buys, and the **USD value** shown to the KOL. A wrong price means a wrong payout, so we use two
+stock** a stock payout buys, and the **USD value** shown to the KOL. A wrong price means a wrong payout, so we use two
 independent sources and refuse to act when they disagree.
 
 | Source | Endpoint / feed | Used for | Why |
 |---|---|---|---|
 | CMC Pro API | `GET /v3/cryptocurrency/quotes/latest?id=1839` (BNB) | BNB/USD → token market cap in USD | Market cap = pool price (BNB) × supply × BNB/USD; milestones are set in USD |
-| CMC Pro API | `GET /v5/real-world-assets/quotes/latest?symbol=NVDA,TSLA,AAPL` | Stock prices for buying the payout and its USD value | CMC's RWA endpoint gives tokenized-stock prices: the asset class KOLs are paid in. 3 stocks, 1 credit |
+| CMC Pro API | `GET /v5/real-world-assets/quotes/latest?symbol=NVDA,TSLA,AAPL` | Stock prices for buying the payout and its USD value | CMC's RWA endpoint gives tokenized-stock prices: the flagship payout option. 3 stocks, 1 credit |
 | Atlas oracle | BNB/USD feed `0x3957d289ee9C38272377786787ea34F9dd29788D` (`latestRoundData()`) | Cross-check of the CMC BNB price | An on-chain, independent source for the number every payout depends on |
 | Atlas oracle | NVDAB/USD feed `0x3ef39d6361efa1e8ca066751f438077da81082a6` | Cross-check of the CMC NVDA price; published on chain | NVDAB is the real NVIDIA bStock on BNB Chain: what mNVDAb stands in for on mainnet |
 
