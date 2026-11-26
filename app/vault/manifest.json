@@ -1,0 +1,32 @@
+{
+  "artifactId": "vaultui_kabalkult-vault_01M8BFV3PK67GXSAC2XDG89C59",
+  "name": "KabalKult KOL Vault",
+  "match": {
+    "bindings": [
+      {
+        "chainId": 97,
+        "factoryAddress": "0xA062092f6a12974b2024EF6B820Bc8250780779C",
+        "tokenAddresses": [
+          "0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777"
+        ],
+        "externalContracts": [
+          {
+            "address": "0x687809daD911091f8FdEEf50E392734674CA7AaA",
+            "label": "mNVDAb (mock NVIDIA bStock, payout token)"
+          },
+          {
+            "address": "0x14c502a6920A81A58C14CC554C810Af1389eFa57",
+            "label": "mTSLAb (mock Tesla bStock, payout token)"
+          },
+          {
+            "address": "0x90A95459ED7CaeEa5f1FB427Cf5502B4651E9B38",
+            "label": "mAAPLb (mock Apple bStock, payout token)"
+          }
+        ]
+      }
+    ]
+  },
+  "i18n": [
+    "en"
+  ]
+}

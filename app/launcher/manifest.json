@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "kind": "launcher-ui",
+  "artifactId": "kabalkult-launcher",
+  "name": "KabalKult",
+  "chainId": 97,
+  "factoryAddress": "0xb3e793c1111900f3d47eee4d8c22c3c15cd0551f",
+  "configContract": "launcher-config-preview/v1",
+  "surfaces": [
+    "launcher-config",
+    "launcher-ui"
+  ],
+  "entry": "Component.tsx",
+  "reads": {
+    "launched": {
+      "functionName": "launched",
+      "returns": "bool"
+    },
+    "token": {
+      "functionName": "token",
+      "returns": "address"
+    },
+    "creator": {
+      "functionName": "creator",
+      "returns": "address"
+    },
+    "poolQuote": {
+      "functionName": "poolQuote",
+      "returns": "uint256"
+    },
+    "vault": {
+      "functionName": "vault",
+      "returns": "address"
+    },
+    "kolCount": {
+      "functionName": "kolCount",
+      "returns": "uint256"
+    },
+    "campaignSlots": {
+      "functionName": "campaignSlots",
+      "returns": "uint256"
+    },
+    "campaignSlotsTaken": {
+      "functionName": "campaignSlotsTaken",
+      "returns": "uint256"
+    },
+    "buyTaxBps": {
+      "functionName": "buyTaxBps",
+      "returns": "uint256"
+    },
+    "sellTaxBps": {
+      "functionName": "sellTaxBps",
+      "returns": "uint256"
+    },
+    "payoutToken": {
+      "functionName": "payoutToken",
+      "returns": "address"
+    },
+    "milestoneCount": {
+      "functionName": "milestoneCount",
+      "returns": "uint256"
+    },
+    "kolNumber": {
+      "functionName": "kolNumber",
+      "returns": "uint256",
+      "account": true
+    },
+    "confirmed": {
+      "functionName": "confirmed",
+      "returns": "bool",
+      "account": true
+    },
+    "invited": {
+      "functionName": "invited",
+      "returns": "bool",
+      "account": true
+    }
+  },
+  "transactions": {
+    "create": true,
+    "actions": {
+      "launch": "payable",
+      "confirm": "nonpayable",
+      "joinCampaign": "nonpayable"
+    }
+  }
+}
