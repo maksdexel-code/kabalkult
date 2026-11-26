@@ -59,6 +59,12 @@
     "errors.reverted": "The transaction reverted on chain.",
     "errors.transaction": "The transaction didn't go through. Try again.",
     "errors.binding": "This page isn't bound to a KabalKult vault.",
-    "errors.read": "Couldn't read the vault. Try again shortly."
+    "errors.read": "Couldn't read the vault. Try again shortly.",
+    "sections.roster": "The Kabal",
+    "notices.roster": "Everyone on the KOL list shares each payout equally. ✓ means the KOL confirmed on chain; @handle means they proved an X post about this deal.",
+    "labels.named": "Named by the creator",
+    "labels.slotHolder": "Took a campaign slot",
+    "labels.noKols": "Nobody on the list yet.",
+    "labels.moreKols": "more on the list"
   }
 }

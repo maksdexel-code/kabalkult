@@ -109,6 +109,9 @@ Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before a
   together, so a token that blocks transfers also blocks the BNB part. Fix: separate claims.
 - **Upgradeable.** Launchers and vaults are beacon proxies; only the Flap Guardian can upgrade them.
 - **Named KOLs are paid with or without confirming.** Confirm is only a public badge.
+- **Vault UI on flap.sh is one version behind this repo.** `app/vault` adds a public KOL roster (every KOL, their
+  confirm badge and proven X handle); the preview Flap published on 26 Nov predates it and shows only the connected
+  wallet's own status. The new version passes `yarn vault:check` and is waiting to be re-submitted to Flap.
 
 ## How this was built
 

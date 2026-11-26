@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { VaultComponentProps } from "@/src/sdk";
 import { formatTokenAmount, handleTxError, isActionAvailableForPhase, readTaxVaultHostContext, useFlapSdk } from "@/src/sdk";
 import { AddressLink, Alert, Button, StatusBadge } from "@/src/ui";
-import { vaultAbi } from "./VaultABI";
+import { launcherAbi, vaultAbi } from "./VaultABI";
 
 // KabalKult KOL vault: black stock, acid-lime rules and type (the mascot's colour), magenta only as a fill.
 type Hex = `0x${string}`;
@@ -13,6 +13,8 @@ type Deal = {
   available: bigint; payouts: bigint; payoutToken: Hex; kols: bigint; creator: Hex; buyTax: number; sellTax: number;
   slots: number; slotsTaken: bigint; bnbUsd: bigint; payoutUsd: bigint; updatedAt: bigint; fresh: boolean; source: string;
 };
+type Kol = { address: Hex; confirmed: boolean; invited: boolean; xHandle: string };
+const ROSTER_MAX = 50; // rows shown; the rest is a count
 type Me = { number: bigint; confirmed: boolean; invited: boolean; xHandle: string; earnedToken: bigint; earnedBnb: bigint; earnedUsd: bigint; claimToken: bigint; claimBnb: bigint };
 
 // Mock stocks sold by our StockDesk (declared in manifest externalContracts). Anything else shows as its address.
@@ -42,6 +44,7 @@ export default function KabalkultVault(_props: VaultComponentProps) {
   const validVault = /^0x[0-9a-fA-F]{40}$/.test(context.vaultAddress) && !/^0x0{40}$/i.test(context.vaultAddress);
   const [deal, setDeal] = useState<Deal | null>(null);
   const [me, setMe] = useState<Me | null>(null);
+  const [roster, setRoster] = useState<{ kols: Kol[]; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"claim" | "pay" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +72,16 @@ export default function KabalkultVault(_props: VaultComponentProps) {
         creator: d[0], buyTax: d[1], sellTax: d[2], slots: d[3], slotsTaken: d[4],
         bnbUsd: p[0], payoutUsd: p[1], updatedAt: p[2], fresh: p[3], source: p[4],
       });
+      // Public roster: the deal's KOL list (from the launcher) + each KOL's badge (from the vault). Its own try, so a
+      // failed roster read never hides the dashboard.
+      try {
+        const launcher = await read<Hex>("launcher");
+        const list = await sdk.readContract<readonly Hex[]>({ address: launcher, abi: launcherAbi, functionName: "kolList" as never } as never);
+        const shown = list.slice(0, ROSTER_MAX);
+        const st = await Promise.all(shown.map(a => read<readonly [bigint, boolean, boolean, string]>("kolStatus", [a])));
+        if (rev !== revision.current) return;
+        setRoster({ kols: shown.map((a, i) => ({ address: a, confirmed: st[i][1], invited: st[i][2], xHandle: st[i][3] })), total: list.length });
+      } catch { if (rev === revision.current) setRoster(null); }
       if (context.userAddress && !wallet.isWrongNetwork) {
         const args = [context.userAddress];
         const [s, e, c] = await Promise.all([
@@ -171,6 +184,25 @@ export default function KabalkultVault(_props: VaultComponentProps) {
       <div className={cell}><span className={label}>{t("labels.kols")}</span><span className="text-xl font-bold tabular-nums">{deal ? deal.kols.toString() : "—"}</span>
         {deal ? <span className="block text-sm text-[#a3ab8c] tabular-nums">{t("labels.slots")} {deal.slotsTaken.toString()}/{deal.slots}</span> : null}</div>
     </div>
+
+    <section aria-label={t("sections.roster")} className="space-y-2">
+      <h3 className={`${display} text-2xl`}>{t("sections.roster")}</h3>
+      <p className="text-sm text-[#a3ab8c]">{t("notices.roster")}</p>
+      {!roster ? <p className="text-sm text-[#a3ab8c]">{loading ? t("states.loading") : t("errors.read")}</p>
+        : roster.kols.length === 0 ? <p className="text-sm text-[#a3ab8c]">{t("labels.noKols")}</p>
+        : <div className="grid pl-[3px] pt-[3px]">
+          {roster.kols.map((k, i) => <div key={k.address} className="grid grid-cols-[40px_minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div className={`${cell} grid place-items-center !bg-[#c4f004] p-2`}><span className={`${display} text-xl !text-black tabular-nums`}>{i + 1}</span></div>
+            <div className={`${cell} text-sm`}><AddressLink address={k.address} explorerBaseUrl={context.explorerBaseUrl} />
+              <span className="block text-[#a3ab8c]">{k.invited ? t("labels.slotHolder") : t("labels.named")}</span></div>
+            <div className={`${cell} !px-2 text-sm sm:!px-4 ${k.confirmed ? "!bg-[#ff2e93] !text-black" : ""}`}>
+              <span className="font-bold">{k.confirmed ? `✓ ${t("labels.confirmed")}` : t("labels.notConfirmed")}</span>
+              {k.xHandle ? <span className="block">{t("labels.postedOnX")} @{k.xHandle}</span> : null}
+            </div>
+          </div>)}
+        </div>}
+      {roster && roster.total > roster.kols.length ? <p className="text-sm text-[#a3ab8c]">+{roster.total - roster.kols.length} {t("labels.moreKols")}</p> : null}
+    </section>
 
     <section aria-label={t("sections.you")} className="space-y-3 border-[3px] border-[#c4f004] p-4">
       <h3 className={`${display} text-2xl`}>{t("sections.you")}</h3>

@@ -3,6 +3,7 @@ import { parseAbi } from "viem";
 // KabalKultVault v2 (BSC Testnet): dashboard views, milestone payout and KOL claims.
 export const vaultAbi = parseAbi([
   "function token() view returns (address)",
+  "function launcher() view returns (address)",
   "function marketCapUsdLast() view returns (uint256)",
   "function milestones() view returns (uint256[] usd, uint16[] shareBps)",
   "function milestonesPaid() view returns (uint256)",
@@ -20,3 +21,6 @@ export const vaultAbi = parseAbi([
   "function checkMilestone()",
   "function claim(address kol)",
 ]);
+
+// The deal (launcher) behind this vault: only its KOL list is read, for the public roster.
+export const launcherAbi = parseAbi(["function kolList() view returns (address[])"]);
