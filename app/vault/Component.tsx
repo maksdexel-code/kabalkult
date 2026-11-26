@@ -121,7 +121,7 @@ export default function KabalkultVault(_props: VaultComponentProps) {
 
   const ageMin = deal ? ((BigInt(Math.floor(Date.now() / 1000)) - deal.updatedAt) / 60n).toString() : null;
 
-  return <div className="w-full min-w-0 space-y-4 border-[3px] border-[#c4f004] bg-[#050505] p-4 text-[#e6f7a8] sm:p-6">
+  return <div className="w-full min-w-0 space-y-4 border-[3px] border-[#c4f004] bg-[#050505] p-4 font-sans text-[#e6f7a8] sm:p-6">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h2 className={`${display} text-3xl sm:text-4xl`}>{t("title")}</h2>
       <StatusBadge tone={riskTone}>{riskLabel}</StatusBadge>

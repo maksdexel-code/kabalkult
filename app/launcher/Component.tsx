@@ -171,6 +171,9 @@ const fromUnits = (value: string | null | undefined, decimals: number, digits = 
   const n = Number(BigInt(value)) / 10 ** decimals;
   return n.toLocaleString("en-US", { maximumFractionDigits: digits });
 };
+// Flap's Portal liquidity floor on BSC testnet, measured 25 Nov 2026 (~1.07 tBNB).
+// shortcut: fixed here because the create page gets no chain reads; the Portal stays the real check.
+const MIN_RAISE_WEI = 1_070_000_000_000_000_000n;
 const wallets = (text: string) => text.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
 
 const configParameters: readonly AbiParameter[] = [{
@@ -201,7 +204,7 @@ function review(form: Form) {
   const name = form.name.trim(), symbol = form.symbol.trim();
   if (!name || !symbol) problems.push("errToken");
   const poolQuote = units(form.pool, 18);
-  if (poolQuote === null || poolQuote === 0n) problems.push("errPool");
+  if (poolQuote === null || poolQuote < MIN_RAISE_WEI) problems.push("errPool");
   const buy = units(form.buyTax, 2), sell = units(form.sellTax, 2);
   if (buy === null || sell === null || buy > 1000n || sell > 1000n || (buy > sell ? buy : sell) < 100n) problems.push("errTax");
   const stock = STOCKS.find(s => s.key === form.payout);
@@ -316,7 +319,8 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
               <Field label={m.name}><input style={input} value={form.name} maxLength={32} onChange={e => set({ name: e.target.value })} placeholder="KabalKult" /></Field>
               <Field label={m.symbol}><input style={input} value={form.symbol} maxLength={12} onChange={e => set({ symbol: e.target.value.toUpperCase() })} placeholder="KKULT" /></Field>
               <Field label={m.meta}><input style={input} value={form.meta} onChange={e => set({ meta: e.target.value })} placeholder="bafkrei…" /></Field>
-              <Field label={m.pool}><input style={{ ...input, ...nums }} inputMode="decimal" value={form.pool} onChange={e => set({ pool: e.target.value })} /></Field>
+              <Field label={m.pool}><input style={{ ...input, ...nums }} inputMode="decimal" value={form.pool} onChange={e => set({ pool: e.target.value })} />
+                <span style={{ display: "block", marginTop: 6, fontSize: 14, color: muted }}>{m.poolHint}</span></Field>
             </Group>
 
             <Group title={m.taxSection}>
@@ -394,7 +398,7 @@ export function LauncherConfig({ context, messages: m, host }: ConfigProps) {
               <Cell><span style={label}>{m.reviewPayout}</span>{payoutName(draft.values.payoutToken, m)}</Cell>
               <Cell><span style={label}>{m.reviewMilestones}</span><span style={nums}>{form.milestones.map(x => `$${x.usd} → ${x.share}%`).join(", ")}</span></Cell>
               <Cell><span style={label}>{m.reviewKols}</span><span style={nums}>{draft.values.namedKols.length} {m.named}, {draft.values.invitees.length} {m.invited}, {draft.values.campaignSlots} {m.slotsWord}</span></Cell>
-              <Cell><span style={label}>{m.reviewCost}</span><span style={nums}>{fee ? `${fromUnits(fee, 18, 4)} BNB` : "—"} {m.reviewCostNote} {form.pool} BNB</span></Cell>
+              <Cell><span style={label}>{m.reviewCost}</span><span style={nums}>{m.toCreate} {fee ? `${fromUnits(fee, 18, 4)} BNB` : m.feeOnConnect}<br />{m.atLaunch} {form.pool} BNB</span></Cell>
             </div>
           )}
 
@@ -477,9 +481,9 @@ export function Launcher({ context, messages: m, host }: DetailProps) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", padding: `0 ${pad}`, paddingTop: 3, paddingLeft: `calc(${pad} + 3px)`, marginTop: pad }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", padding: `0 ${pad}`, paddingTop: 3, paddingLeft: `calc(${pad} + 3px)`, marginTop: pad }}>
         <Cell><span style={label}>{m.statTax}</span><span style={{ ...head("34px"), ...nums }}>{fromUnits(s.buyTaxBps, 2, 2)}% / {fromUnits(s.sellTaxBps, 2, 2)}%</span></Cell>
-        <Cell><span style={label}>{m.statPayout}</span><span style={head("34px")}>{payoutName(s.payoutToken, m)}</span></Cell>
+        <Cell><span style={label}>{m.statPayout}</span><span style={{ ...head("34px"), textTransform: "none" }}>{payoutName(s.payoutToken, m)}</span></Cell>
         <Cell><span style={label}>{m.statMilestones}</span><span style={{ ...head("34px"), ...nums }}>{s.milestoneCount ?? "—"}</span></Cell>
         <Cell><span style={label}>{m.statKols}</span><span style={{ ...head("34px"), ...nums }}>{s.kolCount ?? "—"}</span></Cell>
         <Cell><span style={label}>{m.statSlots}</span><span style={{ ...head("34px"), ...nums }}>{s.campaignSlotsTaken ?? "—"}/{s.campaignSlots ?? "—"}</span></Cell>
