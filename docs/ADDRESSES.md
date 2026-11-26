@@ -87,7 +87,7 @@ v2 = v1 + on-chain campaign invites (no-argument `joinCampaign()`, works as a bu
 | Vault | [`0x06f8efB571951D0169e10cd626eB4c5Db9BB954a`](https://testnet.bscscan.com/address/0x06f8efB571951D0169e10cd626eB4c5Db9BB954a) |
 | Settings | 5%/5% tax · mNVDAb · milestones $731 / $853 / $975 / $1,097 paying 10/20/30/40% · 2 named KOLs · 2 invitees, 50 slots |
 
-### Launch v2 — trading run on testnet (Thu 26 Nov, 16:10–16:40)
+### Launch v2 — trading run on testnet (Thu 26 Nov, 16:05–16:30)
 
 | Step | Result | Tx |
 |---|---|---|
