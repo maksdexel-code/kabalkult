@@ -89,3 +89,17 @@ Deployer / creator: `0xE2cAe010EcEcc7225a5dCfC4A324cd49eB766090`.
 | Payout token | mNVDAb |
 | KOLs | 2 named + campaign (50 slots, Merkle root `0x459b8ef073b29450ac92b55e55706eeb43c5f2180cf761eb8207dc83059c470d`) |
 | First CMC price push | [tx](https://testnet.bscscan.com/tx/0xe37987bed9e7f25b8447d1a89172ec1842e6e9243ce3dfae11b5faa70430734d) (relayer log: `logs/relayer.jsonl`) |
+
+## Launch #1 — full flow on testnet (Thu 26 Nov)
+
+| Step | Result | Tx |
+|---|---|---|
+| 6 buys × 0.05 tBNB (BUYER wallet) | market cap $610 → $987 | [tx](https://testnet.bscscan.com/tx/0x299295c56c9ebd1ec60025c83c6661fd4289b84a1d121f0bd452cff7a1bb2de4) (first) |
+| Sell 25% → tax converted to BNB | market cap $854 | [tx](https://testnet.bscscan.com/tx/0x16a3540f5a6ac83c8bebe9a40de2d94506b160fa6a640ef5c51d842771cbb589) |
+| `dispatch()` → tax to vault | vault 0.0178 tBNB | [tx](https://testnet.bscscan.com/tx/0xff6a3152d8ed3b16dccdbf22bf08158ff94130fde0912842f09e7ef7610a8cd7) |
+| Milestone 1 ($732) paid — 10% of vault → mNVDAb | 2 KOLs | [tx](https://testnet.bscscan.com/tx/0x583719a085a20add3b28fc542a7b916412b1f83cad017c75b5dc53f5436d16b2) |
+| Milestone 2 ($854) paid at MC $921 | | [tx](https://testnet.bscscan.com/tx/0x3aa411305bae6543f435fd225e394a5793f02004f43290691fe4e607606b2449) |
+| Milestone 3 ($976) paid at MC $990 | | [tx](https://testnet.bscscan.com/tx/0xb150870ade9c982421d1149ecce8f831f85dd8e94a2df91a2aa15f62bbbd8385) |
+| Milestone 4 ($1,098) paid at MC $1,136 — vault empty | | [tx](https://testnet.bscscan.com/tx/0xc4e24163d81fee128e2ef3f99555ccb7b842fa010ddf3bec11017c70f0ff64db) |
+| KOLs claim (anyone can trigger, funds go to the KOL) | each KOL holds 0.032757 mNVDAb, earned $4.93 | [tx](https://testnet.bscscan.com/tx/0x7c96015a2e6515b0460beab8b5db961c4193be88497cb5dbce9024bd98368fab), [tx](https://testnet.bscscan.com/tx/0x13ca02fc88c721019bbcc71ae797bc61588923676395df7a910e53163037f215) |
+
