@@ -15,3 +15,5 @@ logs/*.local.*
 # clean public export (its own git repo)
 public-repo/
 *.recovery.lock
+logs/relayer.out
+logs/relayer.pid

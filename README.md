@@ -55,7 +55,9 @@ Market cap, milestone checks and stock purchases all use prices our relayer (`sc
 
 How to verify: read `PriceRelay.source()`, `bnbUsd()`, `stockUsd("NVDA")`, `stockUsd("NVDAB")`, `updatedAt()` on BscScan,
 or look at the `PricesUpdated` events (one every ~5 minutes). Every CMC request (endpoint, credits used) and every
-Atlas reading is also logged by the relayer to `logs/relayer.jsonl` (no key in the log).
+Atlas reading is also logged by the relayer to [`logs/relayer.jsonl`](logs/relayer.jsonl) (no key in the log):
+one JSON line per CMC call (`endpoint`, `credits`, `price`), per Atlas cross-check (`atlasBnbUsd`, `atlasNvdabUsd`,
+`gapBnbPct`, `gapNvdaPct`) and per on-chain push (`tx` hash, which you can open on BscScan).
 
 ## Contracts (`contracts/src`)
 
