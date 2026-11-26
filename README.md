@@ -109,6 +109,10 @@ Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before a
   together, so a token that blocks transfers also blocks the BNB part. Fix: separate claims.
 - **Upgradeable.** Launchers and vaults are beacon proxies; only the Flap Guardian can upgrade them.
 - **Named KOLs are paid with or without confirming.** Confirm is only a public badge.
+- **X proof is blocked on BSC Testnet by Flap's verifier setup (27 Nov, 00:00).** Flap's proof service signs with oracle key
+  `0xDE3C…0d87` (the key the mainnet verifier trusts), but the testnet verifier `0x236C…9932` still trusts `0xE939…B9e5`,
+  so `verify()` returns false for every fresh testnet proof. Tested with a real X post: the proof matches our
+  `xPostText` and only the named KOL can use it; `confirmWithX` waits for Flap to update the testnet oracle key.
 - **Vault UI on flap.sh is one version behind this repo.** `app/vault` adds a public KOL roster (every KOL, their
   confirm badge and proven X handle); the preview Flap published on 26 Nov predates it and shows only the connected
   wallet's own status. The roster reads the KOL list from the deal's launcher, which Flap's current packaging rules
