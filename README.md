@@ -11,9 +11,10 @@ The KOL never holds a meme bag to dump.
 
 One-page write-up (problem, data sources, contracts, next steps): [`docs/WRITEUP.md`](docs/WRITEUP.md).
 
-**Live on Flap (BSC Testnet preview, published by Flap's Workbench):**
-[Launch page of the KKULT deal](https://test.utter.cash/launcher/0x1fcC67DCb185C273b2352267717412Cc899B9495?chain=bnb-testnet&kind=launcher-detail&artifactPath=kabalkult-launcher%2Fc38fa596e2581c69fea085f586b73385636a5ea5f0c36fc8eb7d0162f045e20f) (our Launcher UI) ·
-[KOL vault](https://test.utter.cash/bnb-testnet/0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777/taxinfo?artifactPath=vaultui_kabalkult-vault_01M8BFV3PK67GXSAC2XDG89C59%2Fv20261126092021041_kabalkult-vault_a9af6c4a27b7&lang=en) (our Vault UI, live market cap, milestones and claims).
+**Live on Flap (BSC Testnet; our Launcher Factory is linked to our UI by Flap):**
+[Create a deal](https://test.utter.cash/create/launcher?chain=bnb-testnet&factory=0xb3e793c1111900f3d47eee4d8c22c3c15cd0551f) (our Launcher UI, creation form) ·
+[KKULT deal page](https://test.utter.cash/launcher/0x1fcC67DCb185C273b2352267717412Cc899B9495?chain=bnb-testnet) (our Launcher UI, deal page) ·
+[KOL vault](https://test.utter.cash/bnb-testnet/0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777/taxinfo?artifactPath=vaultui_kabalkult-vault_01M8BFV3PK67GXSAC2XDG89C59%2Fv20261126092021041_kabalkult-vault_a9af6c4a27b7&lang=en) (our Vault UI: live market cap, milestones, claims).
 
 ## How it works
 
