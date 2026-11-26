@@ -14,3 +14,4 @@ logs/*.local.*
 .claude/settings.local.json
 # clean public export (its own git repo)
 public-repo/
+*.recovery.lock

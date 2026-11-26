@@ -10,7 +10,7 @@ set -a; . ./.env; set +a
 K="0x${BUYER_PRIVATE_KEY#0x}"; R=${RPC:-$BSC_TESTNET_RPC_URL}; ME=$(cast wallet address --private-key "$K")
 WBNB=0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd; ROUTER=0xc9D63ddCB9549578057EAB6A83a543DdFEE2b8c3
 T=${KK_TOKEN:-$(awk '/Token/{print $2; exit}' launch/launch.txt)}; V=${KK_VAULT:-$(awk '/Vault/{print $2; exit}' launch/launch.txt)}
-send() { cast send "$@" --private-key "$K" --rpc-url "$R" --json | jq -r '"tx " + .transactionHash'; }
+send() { cast send "$@" --private-key "$K" --rpc-url "$R" --gas-price 0.1gwei --priority-gas-price 0.1gwei --json | jq -r '"tx " + .transactionHash'; }
 deadline() { echo $(( $(date +%s) + 600 )); }
 
 case "${1:-status}" in

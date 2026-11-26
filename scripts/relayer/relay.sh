@@ -42,9 +42,11 @@ tick() {
   done
   echo "BNB \$$BNB  ${STOCKS}($SRC)"
   [ "$DRY" = 1 ] && return 0
-  TX=$(cast send "$RELAY" "update(uint256,string[],uint256[],string)" "$(cast to-wei "$BNB")" \
+  local out; out=$(cast send "$RELAY" "update(uint256,string[],uint256[],string)" "$(cast to-wei "$BNB")" \
     "[$(IFS=,; echo "${TICKERS[*]}")]" "[$(IFS=,; echo "${wei[*]}")]" "$SRC" \
-    --private-key "$DEPLOYER_PRIVATE_KEY" --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" --json | jq -r .transactionHash)
+    --private-key "$DEPLOYER_PRIVATE_KEY" --gas-price 0.1gwei --priority-gas-price 0.1gwei --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" --json 2>&1 || true)
+  TX=$(jq -r '.transactionHash // empty' <<<"$out" 2>/dev/null || true)
+  [ -n "$TX" ] || { log --arg error "push failed: ${out:0:300}"; echo "push failed: ${out:0:300}"; return 1; }
   log --arg relay "$RELAY" --arg bnbUsd "$BNB" --arg stocks "$STOCKS" --arg source "$SRC" --arg tx "$TX"
   echo "pushed: $TX"
   autopay
@@ -56,7 +58,7 @@ autopay() {
   [ -n "$v" ] || return 0
   cast call "$v" "checkMilestone()" --from "$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")" \
     --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" >/dev/null 2>&1 || return 0
-  TX=$(cast send "$v" "checkMilestone()" --private-key "$DEPLOYER_PRIVATE_KEY" \
+  TX=$(cast send "$v" "checkMilestone()" --private-key "$DEPLOYER_PRIVATE_KEY" --gas-price 0.1gwei --priority-gas-price 0.1gwei \
     --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}" --json | jq -r .transactionHash)
   log --arg vault "$v" --arg action checkMilestone --arg tx "$TX"
   echo "milestone paid: $TX"
