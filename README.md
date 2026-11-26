@@ -11,6 +11,10 @@ The KOL never holds a meme bag to dump.
 
 One-page write-up (problem, data sources, contracts, next steps): [`docs/WRITEUP.md`](docs/WRITEUP.md).
 
+**Live on Flap (BSC Testnet preview, published by Flap's Workbench):**
+[Launch page of the KKULT deal](https://test.utter.cash/launcher/0x1fcC67DCb185C273b2352267717412Cc899B9495?chain=bnb-testnet&kind=launcher-detail&artifactPath=kabalkult-launcher%2Fc38fa596e2581c69fea085f586b73385636a5ea5f0c36fc8eb7d0162f045e20f) (our Launcher UI) ·
+[KOL vault](https://test.utter.cash/bnb-testnet/0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777/taxinfo?artifactPath=vaultui_kabalkult-vault_01M8BFV3PK67GXSAC2XDG89C59%2Fv20261126092021041_kabalkult-vault_a9af6c4a27b7&lang=en) (our Vault UI, live market cap, milestones and claims).
+
 ## How it works
 
 1. **Create** — the creator calls Flap's `Portal.newLauncher(KabalKultLauncherFactory, config)`. The config holds
@@ -81,8 +85,20 @@ Campaign invites are stored on chain: pass them at creation (`invitees`) or add 
 
 ## Known limits
 
-- Market cap uses the spot pool price, so one large buy can trigger a milestone (hold rule / TWAP is on the roadmap).
-- Tax stops 30 days after launch (Flap tax duration we set).
-- If no milestone is ever reached, the vault's BNB stays in the vault (an expiry / buy-back is on the roadmap).
-- Buying a non-stock payout token on the DEX has no minimum-output check, so a sandwich trade can take value
-  (an oracle/TWAP minimum is the mainnet fix).
+Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before any mainnet use:
+
+- **Spot-price milestones.** Market cap uses the current pool price, so one large buy (even buy, trigger, sell in one
+  transaction) can reach a milestone. Fix: hold rule across two checks or a TWAP.
+- **DEX payouts have no minimum output.** Buying a non-stock payout token on the DEX uses `amountOutMin = 0`, so a
+  sandwich trade can take value. Fix: oracle- or TWAP-based minimum. Mock-stock payouts use StockDesk at the oracle price.
+- **One price relayer.** One wallet pushes BNB/USD and stock prices (CoinMarketCap, cross-checked with Atlas). It could
+  trigger milestones early or set the stock price; if it stops, payouts wait (prices older than 10 minutes are refused).
+  Fix: read Atlas feeds on chain and require two sources to agree.
+- **Creator can add invitees at any time**, including their own wallets. Each new KOL shares later payouts. Fix: cap or
+  lock the invite list at launch.
+- **No expiry.** If no milestone is ever reached, the vault's BNB stays in the vault. Fix: expiry with buy-back or refund.
+- **Tax runs 30 days** after launch (the Flap tax duration we set).
+- **BNB fallback.** If buying the payout token fails, that payout is booked in BNB; `claim()` pays the token and BNB
+  together, so a token that blocks transfers also blocks the BNB part. Fix: separate claims.
+- **Upgradeable.** Launchers and vaults are beacon proxies; only the Flap Guardian can upgrade them.
+- **Named KOLs are paid with or without confirming.** Confirm is only a public badge.
