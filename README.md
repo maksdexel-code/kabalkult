@@ -105,3 +105,8 @@ Testnet MVP, unaudited, mock stocks. These are known and on the roadmap before a
   together, so a token that blocks transfers also blocks the BNB part. Fix: separate claims.
 - **Upgradeable.** Launchers and vaults are beacon proxies; only the Flap Guardian can upgrade them.
 - **Named KOLs are paid with or without confirming.** Confirm is only a public badge.
+
+## How this was built
+
+Code written with [Claude Code](https://claude.com/claude-code) (AI coding assistant), directed and reviewed by the
+solo builder. The product itself uses no AI: payouts are decided by on-chain rules and CoinMarketCap + Atlas price data.
