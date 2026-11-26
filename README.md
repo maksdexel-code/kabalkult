@@ -32,6 +32,25 @@ The KOL never holds a meme bag to dump.
    new tax keeps paying KOLs while the market cap stays above it. If the token cannot be bought, that payout is in
    BNB instead, so the vault can never get stuck. Our relayer calls `checkMilestone()` after each price update.
 
+## Price data: CoinMarketCap + Atlas
+
+Market cap, milestone checks and stock purchases all use prices our relayer (`scripts/relayer/relay.sh`) writes to
+`PriceRelay` every 5 minutes. Each round:
+
+1. **CoinMarketCap Pro API** (server side, key only in `.env`): BNB/USD from `GET /v3/cryptocurrency/quotes/latest?id=1839`,
+   NVDA/TSLA/AAPL from `GET /v5/real-world-assets/quotes/latest?symbol=NVDA,TSLA,AAPL` (tokenized-stock prices, 1 credit).
+2. **Atlas on-chain feeds** on BSC Testnet, read with `latestRoundData()`: BNB/USD `0x3957d289ee9C38272377786787ea34F9dd29788D`
+   and NVDAB/USD (the real NVIDIA bStock) `0x3ef39d6361efa1e8ca066751f438077da81082a6`.
+3. **Cross-check:** CMC and Atlas must agree within 1% (BNB) and 3% (NVDA vs NVDAB), and the Atlas feeds must be
+   less than 1 hour old. Otherwise the round is skipped: prices on chain go stale after 10 minutes and payouts wait.
+4. **Push:** BNB/USD and stock prices go on chain with a source string that records the agreement, e.g.
+   `CMC Pro API (BNB v3, stocks v5 RWA) + Atlas feeds (BNB/USD, NVDAB/USD) agree: BNB 0.02%, NVDA 0.03%`.
+   The Atlas NVDAB price is stored too (`PriceRelay.stockUsd("NVDAB")`). Every payout event carries this source string.
+
+How to verify: read `PriceRelay.source()`, `bnbUsd()`, `stockUsd("NVDA")`, `stockUsd("NVDAB")`, `updatedAt()` on BscScan,
+or look at the `PricesUpdated` events (one every ~5 minutes). Every CMC request (endpoint, credits used) and every
+Atlas reading is also logged by the relayer to `logs/relayer.jsonl` (no key in the log).
+
 ## Contracts (`contracts/src`)
 
 | Contract | Role |
@@ -40,7 +59,7 @@ The KOL never holds a meme bag to dump.
 | `KabalKultLauncher` | Flap `LauncherBase`. KOL list, campaign slots, X-post confirm, milestones, `launch()`. |
 | `KabalKultVaultFactory` | Flap `DirectLaunchVaultFactoryBase`. Only serves our Launchers, mid-launch. |
 | `KabalKultVault` | Flap `DirectLaunchVaultBase`. Receives tax BNB; `checkMilestone()` books payouts, KOLs `claim()`. |
-| `PriceRelay` | BNB/USD + NVDA/TSLA/AAPL USD with timestamp and source, pushed by our relayer (CMC Pro API). |
+| `PriceRelay` | BNB/USD + NVDA/TSLA/AAPL USD with timestamp and source, pushed by our relayer (CMC Pro API, cross-checked against Atlas on-chain feeds). |
 | `StockDesk` / `MockStock` | Testnet stand-in for buying a real bStock (mNVDAb, mTSLAb, mAAPLb) at the oracle price. |
 
 `contracts/src/flap/` is copied unchanged from [FlapPoolLaunchVaultExample](https://github.com/flap-sh/FlapPoolLaunchVaultExample).

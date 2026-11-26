@@ -49,7 +49,10 @@ Do **not** confuse with the bonding-curve Portal `0x5bEacaF7ABCbB3aB280e80D007FD
 | CMC stocks (RWA) | `GET /v5/real-world-assets/quotes/latest?symbol=NVDA,TSLA,AAPL` (1 credit for all three; ✅ live call 26 Nov) | [CMC RWA reference](https://coinmarketcap.com/api/documentation/pro-api-reference/real-world-assets) |
 | CMC key usage | `GET /v1/key/info` (0 credits) | [CMC tools reference](https://coinmarketcap.com/api/documentation/pro-api-reference/tools) |
 | Real NVIDIA bStock on CMC | NVDAB, CMC id 40215 | [CMC tokenized stocks](https://coinmarketcap.com/view/tokenized-stock/) |
-| Atlas feeds | **Unknown** — Chainlink-compatible `latestRoundData()`; no public BSC/testnet addresses | [Atlas docs](https://docs.atlasoracle.io/developers/api-reference/single-feed-contract) — ask Atlas booth |
+| Atlas BNB/USD feed (BSC Testnet, no whitelist) | `0x3957d289ee9C38272377786787ea34F9dd29788D` | Atlas team (booth, 26 Nov) — ✅ `description()` = "SingleFeed BNB/USD", 18 decimals, `latestRoundData()` $552.64 updated < 1 min before check |
+| Atlas NVDAB/USD feed (real NVIDIA bStock) | `0x3ef39d6361efa1e8ca066751f438077da81082a6` | Atlas team — ✅ "SingleFeed NVDAB/USD", 18 decimals, $149.37 (CMC NVDA at the same time: $149.88) |
+| Atlas BTC/USD, ETH/USD feeds | `0x83B2F2c20df36F166cF5b3f017204cbB7BABcAD0`, `0x35369dEcD8c662954B3D24acc2A862C708A34fD2` | Atlas team — ✅ live, not used |
+| Atlas feed interface | Chainlink-compatible `latestRoundData()`, `decimals()`, `description()` | [Atlas docs](https://docs.atlasoracle.io/developers/api-reference/single-feed-contract) |
 
 ## Token metadata (IPFS, uploaded through Flap's upload route)
 

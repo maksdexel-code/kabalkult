@@ -1,6 +1,7 @@
 #!/bin/bash
 # CMC Pro API (server side) -> PriceRelay.update(bnbUsd, tickers, stockUsd, source) on BSC Testnet.
-# Prices: BNB (v3 quotes) + NVDA, TSLA, AAPL (v5 RWA, one call). Every request is logged to logs/relayer.jsonl (time, endpoint, CMC credits, price, tx hash). The key is never logged.
+# Prices: BNB (v3 quotes) + NVDA, TSLA, AAPL (v5 RWA, one call), cross-checked against Atlas on-chain feeds
+# (BNB/USD, NVDAB/USD): if CMC and Atlas disagree, the round is skipped, prices go stale and payouts wait. Every request is logged to logs/relayer.jsonl (time, endpoint, CMC credits, price, tx hash). The key is never logged.
 # Usage: scripts/relayer/relay.sh [--once] [--dry-run]     (loops every RELAY_EVERY seconds, default 300)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -17,7 +18,24 @@ RELAY=${KK_RELAY:-$(jq -r '.transactions[] | select(.contractName=="PriceRelay")
 log() { jq -nc --arg t "$(date -u +%FT%TZ)" "$@" '$ARGS.named + {time: $t}' >> "$LOG"; }
 
 TICKERS=(NVDA TSLA AAPL)   # the StockDesk's mock stocks
-SRC="CMC Pro API: BNB v3 quotes, stocks v5 RWA"
+
+# Atlas oracle feeds on BSC Testnet (Chainlink-style, 18 decimals; addresses from the Atlas team, see docs/ADDRESSES.md).
+ATLAS_BNB=0x3957d289ee9C38272377786787ea34F9dd29788D
+ATLAS_NVDAB=0x3ef39d6361efa1e8ca066751f438077da81082a6
+MAX_GAP_BNB=${MAX_GAP_BNB:-1}      # % CMC vs Atlas BNB/USD may differ
+MAX_GAP_NVDA=${MAX_GAP_NVDA:-3}     # % CMC NVDA vs Atlas NVDAB (tokenized stock, can trade at a small premium)
+ATLAS_MAX_AGE=${ATLAS_MAX_AGE:-3600} # seconds
+
+# atlas <feed> -> USD price, or fails if the feed is unreadable or older than ATLAS_MAX_AGE.
+atlas() {
+  local r; r=$(cast call "$1" "latestRoundData()(uint80,int256,uint256,uint256,uint80)" --rpc-url "${RPC:-$BSC_TESTNET_RPC_URL}") || return 1
+  local answer updated; answer=$(sed -n 2p <<<"$r" | cut -d' ' -f1); updated=$(sed -n 4p <<<"$r" | cut -d' ' -f1)
+  (( $(date +%s) - updated <= ATLAS_MAX_AGE )) || return 1
+  cast from-wei "$answer"
+}
+# gap <a> <b> -> |a-b|/b in %, 2 decimals.
+gap() { awk -v a="$1" -v b="$2" 'BEGIN { d = (a - b) / b * 100; if (d < 0) d = -d; printf "%.2f", d }'; }
+within() { awk -v g="$1" -v m="$2" 'BEGIN { exit !(g ~ /^[0-9.]+$/ && g + 0 <= m + 0) }'; }  # empty/garbage = disagree
 
 # cmc <path> -> sets BODY and logs the call (credits, error).
 cmc() {
@@ -40,6 +58,17 @@ tick() {
     p=$(usd "$t"); sane "$p" 1 100000 || { echo "bad $t price '$p'"; return 1; }
     STOCKS+="$t \$$p  "; wei+=("$(cast to-wei "$p")")
   done
+  # Atlas cross-check. The Atlas NVDAB price is also published on chain as ticker "NVDAB".
+  local aBnb aNvdab gBnb gNvda
+  aBnb=$(atlas $ATLAS_BNB) && aNvdab=$(atlas $ATLAS_NVDAB) || { log --arg error "atlas feed unreadable or stale, round skipped"; echo "atlas feed unreadable or stale, round skipped"; return 1; }
+  gBnb=$(gap "$BNB" "$aBnb"); gNvda=$(gap "$(usd NVDA)" "$aNvdab")
+  log --arg atlasBnbUsd "$aBnb" --arg atlasNvdabUsd "$aNvdab" --arg gapBnbPct "$gBnb" --arg gapNvdaPct "$gNvda"
+  if ! within "$gBnb" $MAX_GAP_BNB || ! within "$gNvda" $MAX_GAP_NVDA; then
+    log --arg error "CMC and Atlas disagree (BNB ${gBnb}%, NVDA ${gNvda}%), round skipped"
+    echo "CMC and Atlas disagree (BNB ${gBnb}%, NVDA ${gNvda}%), round skipped"; return 1
+  fi
+  TICKERS+=(NVDAB); wei+=("$(cast to-wei "$aNvdab")"); STOCKS+="NVDAB(Atlas) \$$aNvdab  "
+  SRC="CMC Pro API (BNB v3, stocks v5 RWA) + Atlas feeds (BNB/USD, NVDAB/USD) agree: BNB ${gBnb}%, NVDA ${gNvda}%"
   echo "BNB \$$BNB  ${STOCKS}($SRC)"
   [ "$DRY" = 1 ] && return 0
   local out; out=$(cast send "$RELAY" "update(uint256,string[],uint256[],string)" "$(cast to-wei "$BNB")" \
@@ -65,7 +94,7 @@ autopay() {
 }
 
 while true; do
-  STOCKS=""
+  STOCKS=""; TICKERS=(NVDA TSLA AAPL)
   tick || echo "tick failed (see $LOG)"
   [ "$ONCE" = 1 ] && break
   sleep "${RELAY_EVERY:-300}"
