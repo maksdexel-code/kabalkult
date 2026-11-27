@@ -1,0 +1,12 @@
+  Launcher 0x1fcC67DCb185C273b2352267717412Cc899B9495
+  Token    0xFf5a76C7748817EaaF3a457b0ad445e1F1Ed7777
+  Pool     0xc165Ab54e4d618628c7d37b4069b14285EaeD9E7
+  Vault    0x06f8efB571951D0169e10cd626eB4c5Db9BB954a
+  Launch MC USD    609
+  Milestone USD / share bps 731 1000
+  Milestone USD / share bps 853 2000
+  Milestone USD / share bps 975 3000
+  Milestone USD / share bps 1097 4000
+  Payout token     0x687809daD911091f8FdEEf50E392734674CA7AaA
+  Tax buy/sell bps 500 500
+  Campaign slots   50

@@ -93,7 +93,7 @@ v2 = v1 + on-chain campaign invites (no-argument `joinCampaign()`, works as a bu
 
 | Step | Result | Tx |
 |---|---|---|
-| Run 1: 18 random buys (0.03–0.06 tBNB) + 6 sells + tax dispatches | market cap $609 → $1,225 | log: `scripts/demo/spam.sh` |
+| Run 1: 18 random buys (0.03–0.06 tBNB) + 6 sells + tax dispatches | market cap $609 → $1,225 | log: [`launch/demo-trades.txt`](../launch/demo-trades.txt) (made by `scripts/demo/spam.sh`) |
 | Milestones 1 + 2 paid **in one payout** (catch-up: the pump passed both) | 30% of the vault → mNVDAb | [tx](https://testnet.bscscan.com/tx/0x4cd5517ce5dec04760283f73fcbc27958fc1a741a8c9ab95a002f64bbd2b2654) |
 | Milestone 3 paid | | [tx](https://testnet.bscscan.com/tx/0x434b5e900efeeac8be3609fd9e973b7bff18c3a289a91780f6bf28c90033d56a) |
 | Milestone 4 paid **automatically by the CMC relayer** right after a price push | vault spent | [tx](https://testnet.bscscan.com/tx/0x40e14ba24f83f2a5f503b337891ef9fb8f722582f8d9a7bf7005dd37d49150fb) |
