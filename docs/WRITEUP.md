@@ -1,6 +1,6 @@
 # KabalKult — KOLs paid in anything, only if the meme performs
 
-**CoinMarketCap × Atlas Challenge — one-page write-up** · BNB Chain (BSC Testnet, chain 97) · Flap Pool Launch
+**CoinMarketCap × Atlas Challenge — one-page write-up** · BNB Chain (BSC Testnet, chain 97) · Flap Pool Launch · Demo video: https://youtu.be/_O23MoKVkFE
 Testnet only · mock stocks (mNVDAb, mTSLAb, mAAPLb), not real shares · unaudited
 
 ## Problem and audience
